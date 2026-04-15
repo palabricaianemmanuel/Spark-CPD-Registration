@@ -16,14 +16,17 @@ function Registration() {
   const [showIntro, setShowIntro] = useState(true);
   const [showShake, setShowShake] = useState(false);
   const [registeredName, setRegisteredName] = useState('');
+  const [introKey, setIntroKey] = useState(0);
 
   // Intro timer
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setShowIntro(false);
-    }, 4200); // Matching slower CSS animations
-    return () => clearTimeout(timer);
-  }, []);
+    if (showIntro) {
+      const timer = setTimeout(() => {
+        setShowIntro(false);
+      }, 4200); // Matching slower CSS animations
+      return () => clearTimeout(timer);
+    }
+  }, [showIntro]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -66,6 +69,7 @@ function Registration() {
     setSuccess(false);
     setError(null);
     setShowIntro(true);
+    setIntroKey(prev => prev + 1);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -186,7 +190,7 @@ function Registration() {
     <>
       {/* 🌪️ Welcome Animation Overlay */}
       <div className={`intro-screen ${!showIntro ? 'hidden' : ''}`}>
-        <div className="intro-logo-container">
+        <div className="intro-logo-container" key={introKey}>
           <img src="/sparklogo.png" alt="Logo" className="intro-logo" />
           <div className="spark-overlay">
             {[...Array(10)].map((_, i) => (
