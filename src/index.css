@@ -908,12 +908,12 @@ body {
   justify-content: center;
   align-items: center;
   z-index: 2000;
-  transition: opacity 1.2s ease-in-out, visibility 1.2s;
 }
 
 .intro-screen.hidden {
   opacity: 0;
   visibility: hidden;
+  transition: opacity 1.2s ease-in-out, visibility 1.2s;
 }
 
 .intro-logo {
