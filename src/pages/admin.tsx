@@ -3,7 +3,6 @@ import {
   Loader2,
   AlertCircle,
   Lock,
-  Mail,
   LogOut,
   Copy,
   FileDown,
