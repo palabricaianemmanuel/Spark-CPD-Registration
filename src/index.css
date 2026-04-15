@@ -38,7 +38,7 @@ body {
 .auth-card {
   background: var(--brand-white);
   border-radius: 12px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05), 0 1px 3px rgba(0,0,0,0.02);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05), 0 1px 3px rgba(0, 0, 0, 0.02);
   border: 1px solid var(--brand-border);
   width: 100%;
   max-width: 480px;
@@ -119,7 +119,7 @@ body {
   gap: 1rem;
 }
 
-.form-row > .form-group {
+.form-row>.form-group {
   flex: 1;
   margin-bottom: 1.25rem;
 }
@@ -196,8 +196,13 @@ body {
 }
 
 @keyframes spin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 /* ═══════════════════════════════════════════════════════════════════
@@ -206,37 +211,71 @@ body {
 
 /* Animations */
 @keyframes slideUpFade {
-  from { opacity: 0; transform: translateY(16px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 @keyframes shake {
-  0%, 100% { transform: translateX(0); }
-  10%, 30%, 50%, 70%, 90% { transform: translateX(-4px); }
-  20%, 40%, 60%, 80% { transform: translateX(4px); }
+
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+
+  10%,
+  30%,
+  50%,
+  70%,
+  90% {
+    transform: translateX(-4px);
+  }
+
+  20%,
+  40%,
+  60%,
+  80% {
+    transform: translateX(4px);
+  }
 }
 
 @keyframes toastSlideIn {
-  from { opacity: 0; transform: translateX(100%); }
-  to { opacity: 1; transform: translateX(0); }
+  from {
+    opacity: 0;
+    transform: translateX(100%);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
 }
 
 /* ── Login Split Layout ─────────────────────────────────────────── */
 .admin-login-layout {
   display: flex;
+  flex-direction: column;
   min-height: 100vh;
   background: var(--brand-white);
 }
 
 .admin-login-brand {
   flex: 1;
-  background-color: #0F172A; /* Slate 900 for modern SaaS feel */
+  background-color: #0F172A;
+  /* Slate 900 for modern SaaS feel */
   background-image: radial-gradient(circle at 50% 10%, #1E293B 0%, #020617 100%);
-  display: none;
+  display: flex;
   flex-direction: column;
   justify-content: center;
   align-items: center;
-  padding: 4rem;
+  padding: 3rem 2rem;
+  min-height: 100vh;
   color: var(--brand-white);
   text-align: center;
   position: relative;
@@ -244,23 +283,53 @@ body {
 }
 
 @keyframes smoothFlameWave {
-  0% { transform: translateY(0); opacity: 0.8; filter: blur(40px) brightness(1); }
-  50% { transform: translateY(-8%); opacity: 1; filter: blur(50px) brightness(1.2); }
-  100% { transform: translateY(0); opacity: 0.8; filter: blur(40px) brightness(1); }
+  0% {
+    transform: translateY(0);
+    opacity: 0.8;
+    filter: blur(40px) brightness(1);
+  }
+
+  50% {
+    transform: translateY(-8%);
+    opacity: 1;
+    filter: blur(50px) brightness(1.2);
+  }
+
+  100% {
+    transform: translateY(0);
+    opacity: 0.8;
+    filter: blur(40px) brightness(1);
+  }
 }
 
 @keyframes emberRise {
-  0% { transform: translateY(100vh); opacity: 0; }
-  10% { opacity: 1; }
-  80% { opacity: 0.8; }
-  100% { transform: translateY(-20vh); opacity: 0; }
+  0% {
+    transform: translateY(100vh);
+    opacity: 0;
+  }
+
+  10% {
+    opacity: 1;
+  }
+
+  80% {
+    opacity: 0.8;
+  }
+
+  100% {
+    transform: translateY(-20vh);
+    opacity: 0;
+  }
 }
 
 .admin-login-brand::before {
   content: '';
   position: absolute;
-  top: 0; left: 0; right: 0; bottom: 0;
-  background: 
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background:
     radial-gradient(ellipse at 50% 110%, rgba(255, 106, 0, 0.5) 0%, transparent 50%),
     radial-gradient(ellipse at 10% 100%, rgba(255, 61, 0, 0.4) 0%, transparent 40%),
     radial-gradient(ellipse at 90% 100%, rgba(255, 140, 66, 0.3) 0%, transparent 40%);
@@ -274,10 +343,13 @@ body {
 .admin-login-brand::after {
   content: '';
   position: absolute;
-  top: 0; left: 0; right: 0; bottom: 0;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
   pointer-events: none;
   z-index: 1;
-  background-image: 
+  background-image:
     radial-gradient(circle at 10% 80%, #FF8C42 1.5px, transparent 2px),
     radial-gradient(circle at 25% 60%, rgba(255, 106, 0, 0.8) 2px, transparent 3px),
     radial-gradient(circle at 45% 90%, #FF3D00 1.5px, transparent 2.5px),
@@ -289,14 +361,19 @@ body {
   opacity: 0.7;
 }
 
-.admin-login-brand > * {
+.admin-login-brand>* {
   position: relative;
   z-index: 2;
 }
 
 @media (min-width: 900px) {
+  .admin-login-layout {
+    flex-direction: row;
+  }
+
   .admin-login-brand {
-    display: flex;
+    padding: 4rem;
+    min-height: auto;
   }
 }
 
@@ -326,6 +403,7 @@ body {
   align-items: center;
   padding: 2rem;
   background: var(--brand-gray);
+  min-height: 100vh;
 }
 
 .admin-login-card {
@@ -340,7 +418,7 @@ body {
 }
 
 .admin-login-card.shake {
-  animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both;
+  animation: shake 0.5s cubic-bezier(.36, .07, .19, .97) both;
 }
 
 .admin-login-card h2 {
@@ -394,8 +472,8 @@ body {
   box-shadow: 0 0 0 3px rgba(255, 94, 0, 0.1);
 }
 
-.input-group input:focus ~ label,
-.input-group input:not(:placeholder-shown) ~ label {
+.input-group input:focus~label,
+.input-group input:not(:placeholder-shown)~label {
   top: 0;
   font-size: 0.75rem;
   color: var(--brand-orange);
@@ -414,6 +492,7 @@ body {
   padding: 0;
   display: flex;
 }
+
 .password-toggle:hover {
   color: var(--brand-black);
 }
@@ -468,9 +547,11 @@ body {
   transform: translateY(-2px) scale(1.02);
   box-shadow: var(--brand-shadow-lg);
 }
+
 .btn-primary:active:not(:disabled) {
   transform: translateY(0) scale(0.98);
 }
+
 .btn-primary:disabled {
   opacity: 0.7;
   cursor: not-allowed;
@@ -494,6 +575,7 @@ body {
   font-size: 0.9rem;
   font-weight: 500;
 }
+
 .toast svg {
   color: #4ADE80;
 }
@@ -632,16 +714,18 @@ body {
   align-items: center;
   justify-content: center;
 }
+
 .admin-stat-icon.primary {
   background: rgba(255, 94, 0, 0.1);
   color: var(--brand-orange);
 }
+
 .admin-stat-icon.secondary {
   background: #F1F5F9;
   color: #64748B;
 }
 
-.admin-stat-card > div {
+.admin-stat-card>div {
   display: flex;
   flex-direction: column;
 }
@@ -840,6 +924,7 @@ body {
 .skeleton-row td {
   padding: 1rem 1.5rem;
 }
+
 .skeleton-box {
   height: 20px;
   background: linear-gradient(90deg, #F1F5F9 25%, #E2E8F0 50%, #F1F5F9 75%);
@@ -847,9 +932,15 @@ body {
   animation: skeletonLoad 1.5s infinite;
   border-radius: 4px;
 }
+
 @keyframes skeletonLoad {
-  0% { background-position: 200% 0; }
-  100% { background-position: -200% 0; }
+  0% {
+    background-position: 200% 0;
+  }
+
+  100% {
+    background-position: -200% 0;
+  }
 }
 
 /* Empty State */
@@ -858,10 +949,12 @@ body {
   text-align: center;
   color: #94A3B8;
 }
+
 .admin-empty svg {
   color: #E2E8F0;
   margin-bottom: 1rem;
 }
+
 .admin-empty p {
   margin: 0;
   font-size: 1rem;
@@ -869,14 +962,41 @@ body {
 
 /* Responsive */
 @media (max-width: 768px) {
-  .admin-header { padding: 0.75rem 1rem; }
-  .admin-main { padding: 1rem; }
-  .admin-search-wrapper { min-width: 100%; }
-  .admin-toolbar-actions { width: 100%; justify-content: space-between; flex-wrap: wrap; }
-  .admin-action-btn span { display: none; }
-  .admin-action-btn { padding: 0.6rem; flex: 1; justify-content: center; }
-  .admin-logout-btn span { display: none; }
-  .admin-header-badge { display: none; }
+  .admin-header {
+    padding: 0.75rem 1rem;
+  }
+
+  .admin-main {
+    padding: 1rem;
+  }
+
+  .admin-search-wrapper {
+    min-width: 100%;
+  }
+
+  .admin-toolbar-actions {
+    width: 100%;
+    justify-content: space-between;
+    flex-wrap: wrap;
+  }
+
+  .admin-action-btn span {
+    display: none;
+  }
+
+  .admin-action-btn {
+    padding: 0.6rem;
+    flex: 1;
+    justify-content: center;
+  }
+
+  .admin-logout-btn span {
+    display: none;
+  }
+
+  .admin-header-badge {
+    display: none;
+  }
 }
 
 .admin-sort-icon {
@@ -945,20 +1065,36 @@ body {
 }
 
 @keyframes logoPulse {
-  0%, 100% { transform: scale(1); filter: drop-shadow(0 0 20px rgba(255, 94, 0, 0.4)); }
-  50% { transform: scale(1.1); filter: drop-shadow(0 0 35px rgba(255, 94, 0, 0.7)); }
+
+  0%,
+  100% {
+    transform: scale(1);
+    filter: drop-shadow(0 0 20px rgba(255, 94, 0, 0.4));
+  }
+
+  50% {
+    transform: scale(1.1);
+    filter: drop-shadow(0 0 35px rgba(255, 94, 0, 0.7));
+  }
 }
 
 @keyframes textReveal {
-  from { opacity: 0; transform: translateY(20px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 /* Enhanced Registration Form */
 .registration-container {
   background: radial-gradient(circle at top right, rgba(255, 94, 0, 0.05) 0%, transparent 40%),
-              radial-gradient(circle at bottom left, rgba(255, 94, 0, 0.03) 0%, transparent 30%),
-              var(--brand-gray);
+    radial-gradient(circle at bottom left, rgba(255, 94, 0, 0.03) 0%, transparent 30%),
+    var(--brand-gray);
 }
 
 .registration-card-entrance {
@@ -998,7 +1134,7 @@ body {
   padding-left: 2.75rem !important;
 }
 
-.form-input:focus + .form-input-icon {
+.form-input:focus+.form-input-icon {
   color: var(--brand-orange);
 }
 
@@ -1030,7 +1166,7 @@ body {
 }
 
 .registration-card.shake {
-  animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both;
+  animation: shake 0.5s cubic-bezier(.36, .07, .19, .97) both;
 }
 
 /* Success Phase Specifics */
@@ -1131,13 +1267,29 @@ body {
 }
 
 @keyframes successGlowPulse {
-  0%, 100% { transform: scale(1); opacity: 0.5; }
-  50% { transform: scale(1.4); opacity: 0.8; }
+
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 0.5;
+  }
+
+  50% {
+    transform: scale(1.4);
+    opacity: 0.8;
+  }
 }
 
 @keyframes successBounce {
-  0% { transform: scale(0); opacity: 0; }
-  100% { transform: scale(1); opacity: 1; }
+  0% {
+    transform: scale(0);
+    opacity: 0;
+  }
+
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
 }
 
 /* Sparking Effect */
@@ -1173,19 +1325,78 @@ body {
 }
 
 @keyframes sparkReveal {
-  0% { transform: translate(0, 0) scale(0); opacity: 0; }
-  10% { opacity: 1; }
-  100% { transform: translate(var(--dx), var(--dy)) scale(1.5); opacity: 0; }
+  0% {
+    transform: translate(0, 0) scale(0);
+    opacity: 0;
+  }
+
+  10% {
+    opacity: 1;
+  }
+
+  100% {
+    transform: translate(var(--dx), var(--dy)) scale(1.5);
+    opacity: 0;
+  }
 }
 
 /* Individual Spark Trajectories */
-.spark-particle:nth-child(1) { --dx: -80px; --dy: -60px; animation: sparkReveal 1s forwards 3.2s; }
-.spark-particle:nth-child(2) { --dx: 80px; --dy: -60px; animation: sparkReveal 1s forwards 3.3s; }
-.spark-particle:nth-child(3) { --dx: -40px; --dy: -100px; animation: sparkReveal 1s forwards 3.1s; }
-.spark-particle:nth-child(4) { --dx: 40px; --dy: -100px; animation: sparkReveal 1s forwards 3.4s; }
-.spark-particle:nth-child(5) { --dx: -100px; --dy: 20px; animation: sparkReveal 1s forwards 3.2s; }
-.spark-particle:nth-child(6) { --dx: 100px; --dy: 20px; animation: sparkReveal 1s forwards 3.3s; }
-.spark-particle:nth-child(7) { --dx: 0px; --dy: -120px; animation: sparkReveal 1s forwards 3.5s; }
-.spark-particle:nth-child(8) { --dx: -60px; --dy: 80px; animation: sparkReveal 1s forwards 3.2s; }
-.spark-particle:nth-child(9) { --dx: 60px; --dy: 80px; animation: sparkReveal 1s forwards 3.4s; }
-.spark-particle:nth-child(10) { --dx: 0px; --dy: 100px; animation: sparkReveal 1s forwards 3.3s; }
+.spark-particle:nth-child(1) {
+  --dx: -80px;
+  --dy: -60px;
+  animation: sparkReveal 1s forwards 3.2s;
+}
+
+.spark-particle:nth-child(2) {
+  --dx: 80px;
+  --dy: -60px;
+  animation: sparkReveal 1s forwards 3.3s;
+}
+
+.spark-particle:nth-child(3) {
+  --dx: -40px;
+  --dy: -100px;
+  animation: sparkReveal 1s forwards 3.1s;
+}
+
+.spark-particle:nth-child(4) {
+  --dx: 40px;
+  --dy: -100px;
+  animation: sparkReveal 1s forwards 3.4s;
+}
+
+.spark-particle:nth-child(5) {
+  --dx: -100px;
+  --dy: 20px;
+  animation: sparkReveal 1s forwards 3.2s;
+}
+
+.spark-particle:nth-child(6) {
+  --dx: 100px;
+  --dy: 20px;
+  animation: sparkReveal 1s forwards 3.3s;
+}
+
+.spark-particle:nth-child(7) {
+  --dx: 0px;
+  --dy: -120px;
+  animation: sparkReveal 1s forwards 3.5s;
+}
+
+.spark-particle:nth-child(8) {
+  --dx: -60px;
+  --dy: 80px;
+  animation: sparkReveal 1s forwards 3.2s;
+}
+
+.spark-particle:nth-child(9) {
+  --dx: 60px;
+  --dy: 80px;
+  animation: sparkReveal 1s forwards 3.4s;
+}
+
+.spark-particle:nth-child(10) {
+  --dx: 0px;
+  --dy: 100px;
+  animation: sparkReveal 1s forwards 3.3s;
+}
