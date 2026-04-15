@@ -20,6 +20,7 @@ CREATE TABLE registrations (
   last_name TEXT NOT NULL,
   email TEXT NOT NULL UNIQUE,
   mobile_number TEXT NOT NULL UNIQUE,
+  temporary_password TEXT NOT NULL,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   CONSTRAINT unique_full_name UNIQUE (first_name, last_name)
 );
@@ -38,6 +39,15 @@ CREATE POLICY "Allow authenticated read access" ON registrations
   USING (auth.role() = 'authenticated');
 ```
 3. Click **"Run"** to execute the query and create the table.
+
+### 💡 If you already have a table:
+If you already created the `registrations` table and just want to add the password column without deleting your data, run this command instead:
+
+```sql
+ALTER TABLE registrations ADD COLUMN temporary_password TEXT DEFAULT 'SPARK-PENDING';
+-- Then make it required for future entries
+ALTER TABLE registrations ALTER COLUMN temporary_password SET NOT NULL;
+```
 
 ## 3. Connect the Application
 1. Go to **Project Settings** -> **API** in the Supabase dashboard.

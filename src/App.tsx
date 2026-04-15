@@ -9,16 +9,24 @@ function App() {
     email: '',
     mobileNumber: ''
   });
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState(false);
-
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({
       ...prev,
       [name]: value
     }));
+  };
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState(false);
+
+  const generatePassword = () => {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // Clean alphanumeric
+    let result = '';
+    for (let i = 0; i < 6; i++) {
+      result += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return `SPARK-${result}`;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -42,6 +50,8 @@ function App() {
       return;
     }
 
+    const tempPassword = generatePassword();
+
     try {
       const { error: submitError } = await supabase
         .from('registrations')
@@ -50,7 +60,8 @@ function App() {
             first_name: formData.firstName,
             last_name: formData.lastName,
             email: formData.email,
-            mobile_number: cleanedMobile
+            mobile_number: cleanedMobile,
+            temporary_password: tempPassword
           }
         ]);
 
@@ -79,16 +90,16 @@ function App() {
       <div className="auth-card">
         <div className="auth-header">
           <img src="/sparklogo.png" alt="SPARK Logo" className="auth-logo" />
-          <h1 className="auth-title">SPARK CPD </h1>
-          <p className="auth-subtitle">Raffle Registration</p>
+          <h1 className="auth-title">SPARK CPD</h1>
+          <p className="auth-subtitle">Account Registration</p>
         </div>
 
         {success ? (
           <div className="success-message">
             <CheckCircle className="success-icon" size={64} />
-            <h2 className="success-title">Registration Complete!</h2>
+            <h2 className="success-title">Account Created!</h2>
             <p className="success-text">
-              Thank you for registering. You have been successfully entered into the raffle.
+              Thank you for registering. Your login credentials and account confirmation have been sent to your email.
             </p>
           </div>
         ) : (
