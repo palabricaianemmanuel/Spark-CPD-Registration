@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Loader2, CheckCircle, AlertCircle, User, Mail, Phone, Home } from 'lucide-react';
 import { supabase } from '../supabaseClient';
+import { TheInfiniteGrid } from '@/components/ui/the-infinite-grid';
 
 function Registration() {
   const [formData, setFormData] = useState({
@@ -188,6 +189,7 @@ function Registration() {
 
   return (
     <>
+      <TheInfiniteGrid />
       {/* 🌪️ Welcome Animation Overlay */}
       <div className={`intro-screen ${!showIntro ? 'hidden' : ''}`}>
         <div className="intro-logo-container" key={introKey}>
@@ -206,7 +208,23 @@ function Registration() {
 
       <div className="auth-container registration-container">
         <div className="registration-card-entrance">
-          <div className={`auth-card registration-card ${showShake ? 'shake' : ''}`}>
+          <div className="registration-split-container">
+            {/* Left Side / Top Banner: Event Image */}
+            <div className="registration-image-side">
+              <img src="/eventimage.jpg" alt="Event Banner" className="event-image" />
+              <div className="event-image-overlay">
+                <h2 className="event-overlay-title">Join the SPARK CPD Raffle!</h2>
+                <p className="event-overlay-subtitle">Learn, Grow, and win exciting prizes for a brighter future.</p>
+              </div>
+              {/* 
+                  LATEST FLUID DESIGN (FOR FUTURE APPROVAL):
+                  <img src="/eventimage.jpg" alt="Event Banner" className="event-image-fluid" />
+              */}
+            </div>
+
+            {/* Right Side / Bottom: Form */}
+            <div className="registration-form-side">
+              <div className={`auth-card registration-card ${showShake ? 'shake' : ''}`}>
             {success ? (
               <div className="success-phase">
                 <div className="success-icon-wrapper">
@@ -338,6 +356,8 @@ function Registration() {
                 </form>
               </>
             )}
+              </div>
+            </div>
           </div>
         </div>
       </div>
