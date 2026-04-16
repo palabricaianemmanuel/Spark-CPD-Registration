@@ -1,9 +1,9 @@
 import { useEffect } from "react";
-import { 
-  motion, 
-  useMotionValue, 
-  useMotionTemplate, 
-  useAnimationFrame 
+import {
+  motion,
+  useMotionValue,
+  useMotionTemplate,
+  useAnimationFrame
 } from "framer-motion";
 
 export const TheInfiniteGrid = () => {
@@ -24,7 +24,7 @@ export const TheInfiniteGrid = () => {
   const gridOffsetX = useMotionValue(0);
   const gridOffsetY = useMotionValue(0);
 
-  const speedX = 0.5; 
+  const speedX = 0.5;
   const speedY = 0.5;
 
   useAnimationFrame(() => {
@@ -37,14 +37,14 @@ export const TheInfiniteGrid = () => {
   const maskImage = useMotionTemplate`radial-gradient(400px circle at ${mouseX}px ${mouseY}px, black, transparent)`;
 
   return (
-    <div className="fixed inset-0 min-h-screen w-full pointer-events-none z-[-1] overflow-hidden bg-slate-50">
+    <div className="fixed inset-0 min-h-screen w-full pointer-events-none z-0 overflow-hidden bg-slate-50">
       {/* Base faint grid */}
       <div className="absolute inset-0 z-0 opacity-[0.3]">
         <GridPattern offsetX={gridOffsetX} offsetY={gridOffsetY} />
       </div>
-      
+
       {/* Interactive mouse reveal grid */}
-      <motion.div 
+      <motion.div
         className="absolute inset-0 z-0 opacity-100"
         style={{ maskImage, WebkitMaskImage: maskImage }}
       >
@@ -78,7 +78,7 @@ const GridPattern = ({ offsetX, offsetY, active = false }: { offsetX: any, offse
             fill="none"
             stroke="currentColor"
             strokeWidth={active ? "1.5" : "1"}
-            className={active ? "text-orange-500" : "text-slate-200"} 
+            className={active ? "text-orange-500" : "text-slate-200"}
           />
         </motion.pattern>
       </defs>

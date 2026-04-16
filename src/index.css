@@ -18,7 +18,7 @@
 body {
   margin: 0;
   font-family: 'Inter', system-ui, Avenir, Helvetica, Arial, sans-serif;
-  background-color: var(--brand-gray);
+  background-color: transparent; /* Changed for animation visibility on Vercel */
   color: var(--brand-text);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -39,6 +39,8 @@ body {
 
 .registration-container {
   background: transparent !important;
+  position: relative;
+  z-index: 10;
 }
 
 /* ── Split Layout for Registration Form ───────────────────────────── */
@@ -70,7 +72,7 @@ body {
 
 .registration-image-side {
   width: 100%;
-  height: 220px; 
+  height: 220px;
   position: relative;
   background-color: var(--brand-black-deep);
 }
@@ -86,7 +88,7 @@ body {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  object-position: left top; /* Anchors the image to the top-left to show the title on mobile */
+  object-position: left top; /* Anchors to top-left for both Mobile and Desktop */
   position: absolute;
   top: 0;
   left: 0;
