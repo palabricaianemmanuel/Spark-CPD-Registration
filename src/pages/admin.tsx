@@ -71,7 +71,6 @@ function Admin() {
   
   // Winner action state
   const [actionLoading, setActionLoading] = useState<string | null>(null);
-  const [winnerSearch, setWinnerSearch] = useState('');
   const [selectedParticipants, setSelectedParticipants] = useState<Set<string>>(new Set());
 
   // Pagination state
@@ -205,9 +204,34 @@ function Admin() {
     currentPage * ITEMS_PER_PAGE
   );
 
+  // ─── Winner Filters ────────────────────────────────────────────────
+  const eligibleParticipants = records.filter(r => !r.is_winner).filter(r => {
+    if (!searchQuery.trim()) return true;
+    const q = searchQuery.toLowerCase();
+    return (
+      r.first_name.toLowerCase().includes(q) ||
+      r.last_name.toLowerCase().includes(q) ||
+      r.email.toLowerCase().includes(q) ||
+      r.mobile_number.includes(q)
+    );
+  });
+
+  const confirmedWinners = records.filter(r => r.is_winner).filter(r => {
+    if (!searchQuery.trim()) return true;
+    const q = searchQuery.toLowerCase();
+    return (
+      r.first_name.toLowerCase().includes(q) ||
+      r.last_name.toLowerCase().includes(q) ||
+      r.email.toLowerCase().includes(q) ||
+      r.mobile_number.includes(q)
+    );
+  });
+
+  const recordsToExport = activeTab === 'registrations' ? filteredRecords : confirmedWinners;
+
   // ─── Copy ─────────────────────────────────────────────────────────
   const handleCopy = async () => {
-    const rows = filteredRecords.map(
+    const rows = recordsToExport.map(
       (r) =>
         `${r.first_name} ${r.last_name} | ${r.email} | ${r.mobile_number}`
     );
@@ -231,7 +255,7 @@ function Admin() {
   // ─── CSV Export ───────────────────────────────────────────────────
   const handleCSV = () => {
     const header = ['First Name', 'Last Name', 'Email', 'Mobile Number', 'Temp Password', 'Registered At'];
-    const rows = filteredRecords.map((r) => [
+    const rows = recordsToExport.map((r) => [
       r.first_name,
       r.last_name,
       r.email,
@@ -259,16 +283,17 @@ function Admin() {
     const doc = new jsPDF({ orientation: 'landscape' });
     doc.setFontSize(18);
     doc.setTextColor(255, 94, 0);
-    doc.text('SPARK CPD - Registrations', 14, 20);
+    const title = activeTab === 'registrations' ? 'SPARK CPD - Registrations' : 'SPARK CPD - Winners';
+    doc.text(title, 14, 20);
     doc.setFontSize(10);
     doc.setTextColor(100);
     doc.text(`Generated: ${new Date().toLocaleString()}`, 14, 28);
-    doc.text(`Total Records: ${filteredRecords.length}`, 14, 34);
+    doc.text(`Total Records: ${recordsToExport.length}`, 14, 34);
 
     autoTable(doc, {
       startY: 42,
       head: [['#', 'First Name', 'Last Name', 'Email', 'Mobile Number', 'Temp Password', 'Registered At']],
-      body: filteredRecords.map((r, i) => [
+      body: recordsToExport.map((r, i) => [
         i + 1,
         r.first_name,
         r.last_name,
@@ -297,16 +322,6 @@ function Admin() {
   };
 
   // ─── Winner Management ──────────────────────────────────────────
-  const eligibleParticipants = records.filter(r => !r.is_winner).filter(r => {
-    if (!winnerSearch.trim()) return true;
-    const q = winnerSearch.toLowerCase();
-    return (
-      r.first_name.toLowerCase().includes(q) ||
-      r.last_name.toLowerCase().includes(q) ||
-      r.email.toLowerCase().includes(q)
-    );
-  });
-
   const toggleParticipant = (id: string) => {
     setSelectedParticipants(prev => {
       const next = new Set(prev);
@@ -823,17 +838,6 @@ function Admin() {
                   <span className="count-badge">{eligibleParticipants.length}</span>
                 </div>
               </div>
-              {/* Search */}
-              <div className="winner-search-wrapper">
-                <Search size={16} className="winner-search-icon" />
-                <input
-                  type="text"
-                  className="winner-search-input"
-                  placeholder="Search participants..."
-                  value={winnerSearch}
-                  onChange={(e) => setWinnerSearch(e.target.value)}
-                />
-              </div>
               {/* Select All */}
               {eligibleParticipants.length > 0 && (
                 <label className="select-all-row">
@@ -848,7 +852,7 @@ function Admin() {
               )}
               <div className="management-list">
                 {eligibleParticipants.length === 0 ? (
-                  <p className="empty-msg">{winnerSearch ? 'No matching participants.' : 'No eligible participants left.'}</p>
+                  <p className="empty-msg">{searchQuery ? 'No matching participants.' : 'No eligible participants left.'}</p>
                 ) : (
                   eligibleParticipants.map(r => (
                     <div key={r.id} className={`winner-row-item ${selectedParticipants.has(r.id) ? 'selected' : ''}`}>
@@ -890,10 +894,10 @@ function Admin() {
                 </button>
               </div>
               <div className="management-list">
-                {records.filter(r => r.is_winner).length === 0 ? (
-                  <p className="empty-msg">No winners selected yet.</p>
+                {confirmedWinners.length === 0 ? (
+                  <p className="empty-msg">{searchQuery ? 'No matching winners.' : 'No winners selected yet.'}</p>
                 ) : (
-                  records.filter(r => r.is_winner).map(r => (
+                  confirmedWinners.map(r => (
                     <div key={r.id} className="winner-row-item winner-confirmed">
                       <div className="user-info">
                         <span className="user-name">{r.first_name} {r.last_name}</span>
