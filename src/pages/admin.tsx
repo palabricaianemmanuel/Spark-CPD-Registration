@@ -22,13 +22,16 @@ import autoTable from 'jspdf-autotable';
 
 // ─── Types ───────────────────────────────────────────────────────────
 interface Registration {
-  id: number;
+  id: string; // Updated to string (UUID)
   first_name: string;
   last_name: string;
   email: string;
   mobile_number: string;
   temporary_password: string;
   created_at: string;
+  is_winner?: boolean;
+  email_sent?: boolean;
+  email_sent_at?: string;
 }
 
 type SortField = 'created_at' | 'first_name' | 'last_name' | 'email';
@@ -52,15 +55,20 @@ function Admin() {
   const [error, setError] = useState<string | null>(null);
 
   // UI state
+  const [activeTab, setActiveTab] = useState<'registrations' | 'winners'>('registrations');
   const [searchQuery, setSearchQuery] = useState('');
   const [sortField, setSortField] = useState<SortField>('created_at');
   const [sortDir, setSortDir] = useState<SortDir>('desc');
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  
+  // Winner action state
+  const [actionLoading, setActionLoading] = useState<string | null>(null);
 
   const tableRef = useRef<HTMLTableElement>(null);
 
   // Initialization (Session & Remember Me)
   useEffect(() => {
+    document.title = 'SPARK CPD Admin';
     const session = sessionStorage.getItem('spark_admin_auth');
     if (session === 'true') {
       setIsAuthenticated(true);
@@ -268,6 +276,80 @@ function Admin() {
     showToast('PDF Exported Successfully');
   };
 
+  // ─── Winner Management ──────────────────────────────────────────
+  const handleSetWinner = async (id: string) => {
+    setActionLoading(id);
+    try {
+      const { error: updateError } = await supabase
+        .from('registrations')
+        .update({ is_winner: true })
+        .eq('id', id);
+
+      if (updateError) throw updateError;
+      
+      setRecords(prev => prev.map(r => r.id === id ? { ...r, is_winner: true } : r));
+      showToast('Participant marked as winner! 🏆');
+    } catch (err: any) {
+      setError(err.message || 'Failed to update winner status.');
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleSendEmail = async (id: string) => {
+    setActionLoading(`email-${id}`);
+    try {
+      const { error: updateError } = await supabase
+        .from('registrations')
+        .update({ 
+          email_sent: true,
+          email_sent_at: new Date().toISOString()
+        })
+        .eq('id', id);
+
+      if (updateError) throw updateError;
+      
+      setRecords(prev => prev.map(r => r.id === id ? { ...r, email_sent: true, email_sent_at: new Date().toISOString() } : r));
+      showToast('Email status updated! ✅');
+    } catch (err: any) {
+      setError(err.message || 'Failed to update email status.');
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleSendAllEmails = async () => {
+    const unsentWinners = records.filter(r => r.is_winner && !r.email_sent);
+    if (unsentWinners.length === 0) {
+      showToast('No pending emails to send.');
+      return;
+    }
+
+    setActionLoading('bulk-email');
+    try {
+      const { error: updateError } = await supabase
+        .from('registrations')
+        .update({ 
+          email_sent: true,
+          email_sent_at: new Date().toISOString()
+        })
+        .in('id', unsentWinners.map(w => w.id));
+
+      if (updateError) throw updateError;
+      
+      setRecords(prev => prev.map(r => 
+        (r.is_winner && !r.email_sent) 
+          ? { ...r, email_sent: true, email_sent_at: new Date().toISOString() } 
+          : r
+      ));
+      showToast(`Successfully updated ${unsentWinners.length} emails! ✅`);
+    } catch (err: any) {
+      setError(err.message || 'Failed to bulk update email status.');
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
   // ─── Sort Icon Helper ─────────────────────────────────────────────
   const SortIcon = ({ field }: { field: SortField }) => {
     if (sortField !== field) return <ChevronDown size={14} className="admin-sort-icon inactive" />;
@@ -407,6 +489,15 @@ function Admin() {
             </div>
           </div>
           <div className="admin-stat-card">
+            <div className="admin-stat-icon warning">
+              <Eye size={24} />
+            </div>
+            <div>
+              <span className="admin-stat-number">{records.filter(r => r.is_winner).length}</span>
+              <span className="admin-stat-label">Total Winners</span>
+            </div>
+          </div>
+          <div className="admin-stat-card">
             <div className="admin-stat-icon secondary">
               <FileText size={24} />
             </div>
@@ -415,6 +506,24 @@ function Admin() {
               <span className="admin-stat-label">Showing results</span>
             </div>
           </div>
+        </div>
+
+        {/* Tab Switcher */}
+        <div className="admin-tabs">
+          <button 
+            className={`admin-tab ${activeTab === 'registrations' ? 'active' : ''}`}
+            onClick={() => setActiveTab('registrations')}
+          >
+            <Users size={18} />
+            Registrations
+          </button>
+          <button 
+            className={`admin-tab ${activeTab === 'winners' ? 'active' : ''}`}
+            onClick={() => setActiveTab('winners')}
+          >
+            <ChevronUp size={18} style={{ transform: 'rotate(45deg)' }} />
+            Manage Winners
+          </button>
         </div>
 
         {/* Toolbar */}
@@ -458,85 +567,167 @@ function Admin() {
           </div>
         )}
 
-        {/* Table */}
-        <div className="admin-table-container">
-          <table className="admin-table" ref={tableRef}>
-            <thead>
-              <tr>
-                <th className="admin-th-num">#</th>
-                <th className="admin-th-sortable" onClick={() => handleSort('first_name')}>
-                  First Name <SortIcon field="first_name" />
-                </th>
-                <th className="admin-th-sortable" onClick={() => handleSort('last_name')}>
-                  Last Name <SortIcon field="last_name" />
-                </th>
-                <th className="admin-th-sortable" onClick={() => handleSort('email')}>
-                  Email <SortIcon field="email" />
-                </th>
-                <th>Mobile Number</th>
-                <th>Temp Password</th>
-                <th className="admin-th-sortable" onClick={() => handleSort('created_at')}>
-                  Registered At <SortIcon field="created_at" />
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {loading ? (
-                // Skeleton UI while loading
-                Array.from({ length: 5 }).map((_, idx) => (
-                  <tr key={`skeleton-${idx}`} className="skeleton-row">
-                    <td><div className="skeleton-box" style={{ width: '20px' }}></div></td>
-                    <td><div className="skeleton-box" style={{ width: '80%' }}></div></td>
-                    <td><div className="skeleton-box" style={{ width: '80%' }}></div></td>
-                    <td><div className="skeleton-box" style={{ width: '90%' }}></div></td>
-                    <td><div className="skeleton-box" style={{ width: '60%' }}></div></td>
-                    <td><div className="skeleton-box" style={{ width: '100px' }}></div></td>
-                    <td><div className="skeleton-box" style={{ width: '70%' }}></div></td>
-                  </tr>
-                ))
-              ) : filteredRecords.length === 0 ? (
+        {/* Content based on Active Tab */}
+        {activeTab === 'registrations' ? (
+          <div className="admin-table-container">
+            <table className="admin-table" ref={tableRef}>
+              <thead>
                 <tr>
-                  <td colSpan={7}>
-                    <div className="admin-empty">
-                      <Users size={48} />
-                      <p>{searchQuery ? 'No matching records found.' : 'No registrations yet.'}</p>
+                  <th className="admin-th-num">#</th>
+                  <th className="admin-th-sortable" onClick={() => handleSort('first_name')}>
+                    <div className="th-content">
+                      First Name <SortIcon field="first_name" />
                     </div>
-                  </td>
+                  </th>
+                  <th className="admin-th-sortable" onClick={() => handleSort('last_name')}>
+                    <div className="th-content">
+                      Last Name <SortIcon field="last_name" />
+                    </div>
+                  </th>
+                  <th className="admin-th-sortable" onClick={() => handleSort('email')}>
+                    <div className="th-content">
+                      Email <SortIcon field="email" />
+                    </div>
+                  </th>
+                  <th>Mobile Number</th>
+                  <th>Status</th>
+                  <th className="admin-th-sortable" onClick={() => handleSort('created_at')}>
+                    <div className="th-content">
+                      Registered At <SortIcon field="created_at" />
+                    </div>
+                  </th>
                 </tr>
-              ) : (
-                filteredRecords.map((r, i) => (
-                  <tr
-                    key={r.id}
-                    className="admin-table-row"
-                    style={{ animationDelay: `${i * 0.03}s` }}
-                  >
-                    <td className="admin-td-num">{i + 1}</td>
-                    <td>{r.first_name}</td>
-                    <td>{r.last_name}</td>
-                    <td className="admin-td-email">{r.email}</td>
-                    <td>{r.mobile_number}</td>
-                    <td>
-                      <span className="badge-temp-pwd">{r.temporary_password}</span>
-                    </td>
-                    <td className="admin-td-date">
-                      {new Date(r.created_at).toLocaleDateString('en-PH', {
-                        year: 'numeric',
-                        month: 'short',
-                        day: 'numeric',
-                      })}
-                      <span className="admin-td-time">
-                        {new Date(r.created_at).toLocaleTimeString('en-PH', {
-                          hour: '2-digit',
-                          minute: '2-digit',
-                        })}
-                      </span>
+              </thead>
+              <tbody>
+                {loading ? (
+                  Array.from({ length: 5 }).map((_, idx) => (
+                    <tr key={`skeleton-${idx}`} className="skeleton-row">
+                      <td><div className="skeleton-box" style={{ width: '20px' }}></div></td>
+                      <td><div className="skeleton-box" style={{ width: '80%' }}></div></td>
+                      <td><div className="skeleton-box" style={{ width: '80%' }}></div></td>
+                      <td><div className="skeleton-box" style={{ width: '90%' }}></div></td>
+                      <td><div className="skeleton-box" style={{ width: '60%' }}></div></td>
+                      <td><div className="skeleton-box" style={{ width: '100px' }}></div></td>
+                      <td><div className="skeleton-box" style={{ width: '70%' }}></div></td>
+                    </tr>
+                  ))
+                ) : filteredRecords.length === 0 ? (
+                  <tr>
+                    <td colSpan={7}>
+                      <div className="admin-empty">
+                        <Users size={48} />
+                        <p>{searchQuery ? 'No matching records found.' : 'No registrations yet.'}</p>
+                      </div>
                     </td>
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+                ) : (
+                  filteredRecords.map((r, i) => (
+                    <tr
+                      key={r.id}
+                      className={`admin-table-row ${r.is_winner ? 'row-winner' : ''}`}
+                      style={{ animationDelay: `${i * 0.03}s` }}
+                    >
+                      <td className="admin-td-num">{i + 1}</td>
+                      <td>{r.first_name}</td>
+                      <td>{r.last_name}</td>
+                      <td className="admin-td-email">{r.email}</td>
+                      <td>{r.mobile_number}</td>
+                      <td>
+                        {r.is_winner ? (
+                          <span className="badge-winner">🏆 Winner</span>
+                        ) : (
+                          <span className="badge-participant">Participant</span>
+                        )}
+                      </td>
+                      <td className="admin-td-date">
+                        {new Date(r.created_at).toLocaleDateString('en-PH', {
+                          year: 'numeric',
+                          month: 'short',
+                          day: 'numeric',
+                        })}
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <div className="winners-management-grid">
+            {/* Eligible Section */}
+            <div className="management-card">
+              <div className="management-card-header">
+                <h3>Eligible Participants</h3>
+                <span className="count-badge">{records.filter(r => !r.is_winner).length}</span>
+              </div>
+              <div className="management-list">
+                {records.filter(r => !r.is_winner).length === 0 ? (
+                  <p className="empty-msg">No eligible participants left.</p>
+                ) : (
+                  records.filter(r => !r.is_winner).map(r => (
+                    <div key={r.id} className="winner-row-item">
+                      <div className="user-info">
+                        <span className="user-name">{r.first_name} {r.last_name}</span>
+                        <span className="user-email">{r.email}</span>
+                      </div>
+                      <button 
+                        className="btn-select-winner"
+                        onClick={() => handleSetWinner(r.id)}
+                        disabled={!!actionLoading}
+                      >
+                        {actionLoading === r.id ? <Loader2 className="spinner" size={16} /> : 'Set as Winner'}
+                      </button>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+
+            {/* Winners Section */}
+            <div className="management-card highlighted">
+              <div className="management-card-header">
+                <h3>Confirmed Winners 🏆</h3>
+                <button 
+                  className="bulk-action-btn"
+                  onClick={handleSendAllEmails}
+                  disabled={!!actionLoading || records.filter(r => r.is_winner && !r.email_sent).length === 0}
+                >
+                  {actionLoading === 'bulk-email' ? <Loader2 className="spinner" size={16} /> : <><FileText size={16} /> Send All Emails</>}
+                </button>
+              </div>
+              <div className="management-list">
+                {records.filter(r => r.is_winner).length === 0 ? (
+                  <p className="empty-msg">No winners selected yet.</p>
+                ) : (
+                  records.filter(r => r.is_winner).map(r => (
+                    <div key={r.id} className="winner-row-item winner-confirmed">
+                      <div className="user-info">
+                        <span className="user-name">{r.first_name} {r.last_name}</span>
+                        <div className="winner-status-line">
+                          <span className="user-email">{r.email}</span>
+                          {r.email_sent ? (
+                            <span className="status-sent">Sent ✅</span>
+                          ) : (
+                            <span className="status-pending">Not Sent</span>
+                          )}
+                        </div>
+                      </div>
+                      {!r.email_sent && (
+                        <button 
+                          className="btn-send-email"
+                          onClick={() => handleSendEmail(r.id)}
+                          disabled={!!actionLoading}
+                        >
+                          {actionLoading === `email-${r.id}` ? <Loader2 className="spinner" size={16} /> : 'Send Email'}
+                        </button>
+                      )}
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          </div>
+        )}
       </main>
 
       {/* Global Application Toast */}

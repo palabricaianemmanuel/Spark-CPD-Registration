@@ -19,6 +19,11 @@ function Registration() {
   const [registeredName, setRegisteredName] = useState('');
   const [introKey, setIntroKey] = useState(0);
 
+  // Page Title
+  useEffect(() => {
+    document.title = 'SPARK CPD Registration';
+  }, []);
+
   // Intro timer
   useEffect(() => {
     if (showIntro) {
