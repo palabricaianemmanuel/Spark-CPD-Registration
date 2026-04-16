@@ -15,6 +15,7 @@ import {
   Eye,
   EyeOff,
   CheckCircle2,
+  PartyPopper,
 } from 'lucide-react';
 import { supabase } from '../supabaseClient';
 import jsPDF from 'jspdf';
@@ -624,20 +625,11 @@ function Admin() {
           </div>
           <div className="admin-stat-card">
             <div className="admin-stat-icon warning">
-              <Eye size={24} />
+              <PartyPopper size={24} />
             </div>
             <div>
               <span className="admin-stat-number">{records.filter(r => r.is_winner).length}</span>
               <span className="admin-stat-label">Total Winners</span>
-            </div>
-          </div>
-          <div className="admin-stat-card">
-            <div className="admin-stat-icon secondary">
-              <FileText size={24} />
-            </div>
-            <div>
-              <span className="admin-stat-number">{filteredRecords.length}</span>
-              <span className="admin-stat-label">Showing results</span>
             </div>
           </div>
         </div>
