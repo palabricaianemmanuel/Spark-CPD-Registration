@@ -297,8 +297,31 @@ function Admin() {
   };
 
   const handleSendEmail = async (id: string) => {
+    const winner = records.find(r => r.id === id);
+    if (!winner) return;
+
     setActionLoading(`email-${id}`);
     try {
+      // 1. Send real email via serverless function
+      const response = await fetch('/api/send-winner-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: winner.email,
+          name: `${winner.first_name} ${winner.last_name}`,
+        }),
+      });
+
+      // Check if response is JSON (not HTML from dev server)
+      const contentType = response.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        throw new Error('Email API is not available. Please deploy to Vercel or run "vercel dev".');
+      }
+
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || 'Failed to send email.');
+
+      // 2. Update Supabase only after successful send
       const { error: updateError } = await supabase
         .from('registrations')
         .update({ 
@@ -310,9 +333,9 @@ function Admin() {
       if (updateError) throw updateError;
       
       setRecords(prev => prev.map(r => r.id === id ? { ...r, email_sent: true, email_sent_at: new Date().toISOString() } : r));
-      showToast('Email status updated! ✅');
+      showToast('Email sent successfully! ✅');
     } catch (err: any) {
-      setError(err.message || 'Failed to update email status.');
+      setError(err.message || 'Failed to send email.');
     } finally {
       setActionLoading(null);
     }
@@ -327,24 +350,60 @@ function Admin() {
 
     setActionLoading('bulk-email');
     try {
-      const { error: updateError } = await supabase
-        .from('registrations')
-        .update({ 
-          email_sent: true,
-          email_sent_at: new Date().toISOString()
-        })
-        .in('id', unsentWinners.map(w => w.id));
+      // 1. Send all emails via serverless function
+      const response = await fetch('/api/send-bulk-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          winners: unsentWinners.map(w => ({
+            id: w.id,
+            email: w.email,
+            name: `${w.first_name} ${w.last_name}`,
+          })),
+        }),
+      });
 
-      if (updateError) throw updateError;
-      
-      setRecords(prev => prev.map(r => 
-        (r.is_winner && !r.email_sent) 
-          ? { ...r, email_sent: true, email_sent_at: new Date().toISOString() } 
-          : r
-      ));
-      showToast(`Successfully updated ${unsentWinners.length} emails! ✅`);
+      // Check if response is JSON (not HTML from dev server)
+      const contentType = response.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        throw new Error('Email API is not available. Please deploy to Vercel or run "vercel dev".');
+      }
+
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || 'Failed to send bulk emails.');
+
+      // 2. Get IDs of successfully sent emails
+      const sentIds = result.results
+        ?.filter((r: { success: boolean }) => r.success)
+        .map((r: { id: string }) => r.id) || [];
+
+      if (sentIds.length > 0) {
+        // 3. Update Supabase for successfully sent emails
+        const { error: updateError } = await supabase
+          .from('registrations')
+          .update({ 
+            email_sent: true,
+            email_sent_at: new Date().toISOString()
+          })
+          .in('id', sentIds);
+
+        if (updateError) throw updateError;
+
+        setRecords(prev => prev.map(r => 
+          sentIds.includes(r.id)
+            ? { ...r, email_sent: true, email_sent_at: new Date().toISOString() } 
+            : r
+        ));
+      }
+
+      const { sent, failed } = result.summary;
+      if (failed > 0) {
+        showToast(`Sent ${sent} emails. ${failed} failed.`);
+      } else {
+        showToast(`Successfully sent ${sent} emails! ✅`);
+      }
     } catch (err: any) {
-      setError(err.message || 'Failed to bulk update email status.');
+      setError(err.message || 'Failed to send bulk emails.');
     } finally {
       setActionLoading(null);
     }
