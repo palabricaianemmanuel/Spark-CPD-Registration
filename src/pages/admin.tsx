@@ -61,6 +61,7 @@ function Admin() {
 
   // Initialization (Session & Remember Me)
   useEffect(() => {
+    document.title = "ADMIN-SPARK CPD Registration";
     const session = sessionStorage.getItem('spark_admin_auth');
     if (session === 'true') {
       setIsAuthenticated(true);
