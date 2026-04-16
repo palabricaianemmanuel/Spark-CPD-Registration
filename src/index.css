@@ -798,12 +798,25 @@ body {
   animation: slideUpFade 0.4s ease-out forwards;
 }
 
+@media (max-width: 640px) {
+  .admin-main {
+    padding: 1.25rem 1rem;
+  }
+}
+
 /* ── Stats Bar ──────────────────────────────────────────────────── */
 .admin-stats-bar {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
   gap: 1.5rem;
   margin-bottom: 2rem;
+}
+
+@media (max-width: 640px) {
+  .admin-stats-bar {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
 }
 
 .admin-stat-card {
@@ -1535,6 +1548,23 @@ body {
   border: 1px solid var(--brand-border);
   box-shadow: var(--brand-shadow-sm);
   width: fit-content;
+  max-width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+@media (max-width: 640px) {
+  .admin-tabs {
+    width: 100%;
+    gap: 0.25rem;
+  }
+  
+  .admin-tab {
+    padding: 0.6rem 0.75rem;
+    font-size: 0.8rem;
+    flex: 1;
+    justify-content: center;
+  }
 }
 
 .admin-tab {
@@ -1601,6 +1631,20 @@ body {
   margin-bottom: 1.5rem;
   padding-bottom: 1rem;
   border-bottom: 1px solid #f1f5f9;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+@media (max-width: 480px) {
+  .management-card-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  
+  .management-card-header .bulk-action-btn {
+    width: 100%;
+    justify-content: center;
+  }
 }
 
 .management-card-header h3 {
@@ -1647,6 +1691,19 @@ body {
   border: 1px solid transparent;
   transition: all 0.2s ease;
   animation: slideUpFade 0.3s ease-out;
+  gap: 1rem;
+}
+
+@media (max-width: 480px) {
+  .winner-row-item {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  
+  .winner-row-item .btn-select-winner,
+  .winner-row-item .btn-send-email {
+    width: 100%;
+  }
 }
 
 .winner-row-item:hover {
@@ -1741,7 +1798,14 @@ body {
 .winner-status-line {
   display: flex;
   align-items: center;
-  gap: 1rem;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+@media (max-width: 480px) {
+  .winner-status-line {
+    gap: 0.5rem;
+  }
 }
 
 .status-sent {
@@ -1796,4 +1860,54 @@ body {
   color: #94A3B8;
   padding: 3rem 0;
   font-style: italic;
-}
+}
+
+/* ── Pagination ─────────────────────────────────────────────────── */
+.admin-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1.5rem;
+  padding: 1.5rem;
+  background: white;
+  border-top: 1px solid var(--brand-border);
+  border-bottom-left-radius: 12px;
+  border-bottom-right-radius: 12px;
+}
+
+.pagination-btn {
+  padding: 0.5rem 1rem;
+  border: 1px solid var(--brand-border);
+  background: white;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #475569;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.pagination-btn:hover:not(:disabled) {
+  border-color: var(--brand-orange);
+  color: var(--brand-orange);
+  background: #FFF7ED;
+}
+
+.pagination-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  background: #F1F5F9;
+}
+
+.pagination-info {
+  font-size: 0.9rem;
+  color: #64748B;
+}
+
+.pagination-info strong {
+  color: #1E293B;
+}
+

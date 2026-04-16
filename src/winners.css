@@ -1,0 +1,70 @@
+/* ── Winner Search ─────────────────────────────────────────────── */
+.winner-search-wrapper {
+  position: relative;
+  margin-bottom: 1rem;
+}
+
+.winner-search-icon {
+  position: absolute;
+  left: 0.85rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #94A3B8;
+  pointer-events: none;
+}
+
+.winner-search-input {
+  width: 100%;
+  padding: 0.6rem 1rem 0.6rem 2.5rem;
+  border: 1px solid var(--brand-border);
+  border-radius: 10px;
+  font-size: 0.9rem;
+  background: #F8FAFC;
+  transition: all 0.2s;
+  box-sizing: border-box;
+}
+
+.winner-search-input:focus {
+  outline: none;
+  border-color: var(--brand-orange);
+  background: white;
+  box-shadow: 0 0 0 3px rgba(255, 94, 0, 0.08);
+}
+
+/* ── Winner Checkboxes ─────────────────────────────────────────── */
+.winner-checkbox {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--brand-orange);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.select-all-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.6rem 1rem;
+  margin-bottom: 0.75rem;
+  background: #F1F5F9;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.2s;
+  user-select: none;
+}
+
+.select-all-row:hover {
+  background: #E2E8F0;
+}
+
+.select-all-label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #475569;
+}
+
+.winner-row-item.selected {
+  background: #FFF7ED;
+  border-color: var(--brand-orange);
+  box-shadow: 0 0 0 1px rgba(255, 94, 0, 0.15);
+}

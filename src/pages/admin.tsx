@@ -19,6 +19,7 @@ import {
 import { supabase } from '../supabaseClient';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import '../winners.css';
 
 // ─── Types ───────────────────────────────────────────────────────────
 interface Registration {
@@ -57,12 +58,24 @@ function Admin() {
   // UI state
   const [activeTab, setActiveTab] = useState<'registrations' | 'winners'>('registrations');
   const [searchQuery, setSearchQuery] = useState('');
+  
+  // Reset page on search or tab change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, activeTab]);
+
   const [sortField, setSortField] = useState<SortField>('created_at');
   const [sortDir, setSortDir] = useState<SortDir>('desc');
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   
   // Winner action state
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [winnerSearch, setWinnerSearch] = useState('');
+  const [selectedParticipants, setSelectedParticipants] = useState<Set<string>>(new Set());
+
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 10;
 
   const tableRef = useRef<HTMLTableElement>(null);
 
@@ -185,6 +198,12 @@ function Admin() {
       return dir * a[sortField].localeCompare(b[sortField]);
     });
 
+  const totalPages = Math.ceil(filteredRecords.length / ITEMS_PER_PAGE);
+  const paginatedRecords = filteredRecords.slice(
+    (currentPage - 1) * ITEMS_PER_PAGE,
+    currentPage * ITEMS_PER_PAGE
+  );
+
   // ─── Copy ─────────────────────────────────────────────────────────
   const handleCopy = async () => {
     const rows = filteredRecords.map(
@@ -277,6 +296,39 @@ function Admin() {
   };
 
   // ─── Winner Management ──────────────────────────────────────────
+  const eligibleParticipants = records.filter(r => !r.is_winner).filter(r => {
+    if (!winnerSearch.trim()) return true;
+    const q = winnerSearch.toLowerCase();
+    return (
+      r.first_name.toLowerCase().includes(q) ||
+      r.last_name.toLowerCase().includes(q) ||
+      r.email.toLowerCase().includes(q)
+    );
+  });
+
+  const toggleParticipant = (id: string) => {
+    setSelectedParticipants(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleAllVisible = () => {
+    const visibleIds = eligibleParticipants.map(r => r.id);
+    const allSelected = visibleIds.every(id => selectedParticipants.has(id));
+    setSelectedParticipants(prev => {
+      const next = new Set(prev);
+      if (allSelected) {
+        visibleIds.forEach(id => next.delete(id));
+      } else {
+        visibleIds.forEach(id => next.add(id));
+      }
+      return next;
+    });
+  };
+
   const handleSetWinner = async (id: string) => {
     setActionLoading(id);
     try {
@@ -288,9 +340,32 @@ function Admin() {
       if (updateError) throw updateError;
       
       setRecords(prev => prev.map(r => r.id === id ? { ...r, is_winner: true } : r));
+      setSelectedParticipants(prev => { const next = new Set(prev); next.delete(id); return next; });
       showToast('Participant marked as winner! 🏆');
     } catch (err: any) {
       setError(err.message || 'Failed to update winner status.');
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleBulkSetWinners = async () => {
+    if (selectedParticipants.size === 0) return;
+    setActionLoading('bulk-winners');
+    try {
+      const ids = Array.from(selectedParticipants);
+      const { error: updateError } = await supabase
+        .from('registrations')
+        .update({ is_winner: true })
+        .in('id', ids);
+
+      if (updateError) throw updateError;
+      
+      setRecords(prev => prev.map(r => ids.includes(r.id) ? { ...r, is_winner: true } : r));
+      setSelectedParticipants(new Set());
+      showToast(`${ids.length} participant(s) marked as winners! 🏆`);
+    } catch (err: any) {
+      setError(err.message || 'Failed to bulk update winners.');
     } finally {
       setActionLoading(null);
     }
@@ -680,13 +755,13 @@ function Admin() {
                     </td>
                   </tr>
                 ) : (
-                  filteredRecords.map((r, i) => (
+                  paginatedRecords.map((r, i) => (
                     <tr
                       key={r.id}
                       className={`admin-table-row ${r.is_winner ? 'row-winner' : ''}`}
                       style={{ animationDelay: `${i * 0.03}s` }}
                     >
-                      <td className="admin-td-num">{i + 1}</td>
+                      <td className="admin-td-num">{(currentPage - 1) * ITEMS_PER_PAGE + i + 1}</td>
                       <td>{r.first_name}</td>
                       <td>{r.last_name}</td>
                       <td className="admin-td-email">{r.email}</td>
@@ -710,6 +785,31 @@ function Admin() {
                 )}
               </tbody>
             </table>
+
+            {/* Pagination Controls */}
+            {totalPages > 1 && (
+              <div className="admin-pagination">
+                <button 
+                  className="pagination-btn"
+                  onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                  disabled={currentPage === 1}
+                >
+                  Previous
+                </button>
+                
+                <div className="pagination-info">
+                  Page <strong>{currentPage}</strong> of <strong>{totalPages}</strong>
+                </div>
+
+                <button 
+                  className="pagination-btn"
+                  onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                  disabled={currentPage === totalPages}
+                >
+                  Next
+                </button>
+              </div>
+            )}
           </div>
         ) : (
           <div className="winners-management-grid">
@@ -717,17 +817,60 @@ function Admin() {
             <div className="management-card">
               <div className="management-card-header">
                 <h3>Eligible Participants</h3>
-                <span className="count-badge">{records.filter(r => !r.is_winner).length}</span>
+                <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+                  {selectedParticipants.size > 0 && (
+                    <button
+                      className="bulk-action-btn"
+                      onClick={handleBulkSetWinners}
+                      disabled={!!actionLoading}
+                      style={{ background: 'var(--brand-orange)' }}
+                    >
+                      {actionLoading === 'bulk-winners' ? <Loader2 className="spinner" size={16} /> : <><CheckCircle2 size={16} /> Set {selectedParticipants.size} as Winners</>}
+                    </button>
+                  )}
+                  <span className="count-badge">{eligibleParticipants.length}</span>
+                </div>
               </div>
+              {/* Search */}
+              <div className="winner-search-wrapper">
+                <Search size={16} className="winner-search-icon" />
+                <input
+                  type="text"
+                  className="winner-search-input"
+                  placeholder="Search participants..."
+                  value={winnerSearch}
+                  onChange={(e) => setWinnerSearch(e.target.value)}
+                />
+              </div>
+              {/* Select All */}
+              {eligibleParticipants.length > 0 && (
+                <label className="select-all-row">
+                  <input
+                    type="checkbox"
+                    className="winner-checkbox"
+                    checked={eligibleParticipants.length > 0 && eligibleParticipants.every(r => selectedParticipants.has(r.id))}
+                    onChange={toggleAllVisible}
+                  />
+                  <span className="select-all-label">Select All ({eligibleParticipants.length})</span>
+                </label>
+              )}
               <div className="management-list">
-                {records.filter(r => !r.is_winner).length === 0 ? (
-                  <p className="empty-msg">No eligible participants left.</p>
+                {eligibleParticipants.length === 0 ? (
+                  <p className="empty-msg">{winnerSearch ? 'No matching participants.' : 'No eligible participants left.'}</p>
                 ) : (
-                  records.filter(r => !r.is_winner).map(r => (
-                    <div key={r.id} className="winner-row-item">
-                      <div className="user-info">
-                        <span className="user-name">{r.first_name} {r.last_name}</span>
-                        <span className="user-email">{r.email}</span>
+                  eligibleParticipants.map(r => (
+                    <div key={r.id} className={`winner-row-item ${selectedParticipants.has(r.id) ? 'selected' : ''}`}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                        <input
+                          type="checkbox"
+                          className="winner-checkbox"
+                          checked={selectedParticipants.has(r.id)}
+                          onChange={() => toggleParticipant(r.id)}
+                        />
+                        <div className="user-info">
+                          <span className="user-name">{r.first_name} {r.last_name}</span>
+                          <span className="user-email">{r.email}</span>
+                        </div>
                       </div>
                       <button 
                         className="btn-select-winner"
