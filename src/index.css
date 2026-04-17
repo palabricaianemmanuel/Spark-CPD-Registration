@@ -1910,4 +1910,56 @@ body {
 .pagination-info strong {
   color: #1E293B;
 }
+
+/* ── Mobile Context Tooltips ────────────────────────────────────── */
+@media (hover: none) and (pointer: coarse) {
+  .admin-action-btn {
+    position: relative;
+  }
+
+  /* Prevent default tap-highlight color to make the tooltip cleaner */
+  .admin-action-btn {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* Show tooltip when long-pressed / active */
+  .admin-action-btn:active::after {
+    content: attr(title);
+    position: absolute;
+    bottom: calc(100% + 8px);
+    left: 50%;
+    transform: translateX(-50%);
+    background: #1E293B;
+    color: white;
+    padding: 6px 10px;
+    border-radius: 6px;
+    font-size: 0.75rem;
+    font-weight: 500;
+    white-space: nowrap;
+    z-index: 1000;
+    pointer-events: none;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    animation: tooltipFade 0.2s ease-in-out forwards;
+  }
+
+  /* Tooltip arrow/triangle */
+  .admin-action-btn:active::before {
+    content: '';
+    position: absolute;
+    bottom: calc(100% + 2px);
+    left: 50%;
+    transform: translateX(-50%);
+    border-width: 6px;
+    border-style: solid;
+    border-color: #1E293B transparent transparent transparent;
+    z-index: 1000;
+    pointer-events: none;
+    animation: tooltipFade 0.2s ease-in-out forwards;
+  }
+}
+
+@keyframes tooltipFade {
+  from { opacity: 0; transform: translate(-50%, 5px); }
+  to { opacity: 1; transform: translate(-50%, 0); }
+}
 
