@@ -16,10 +16,12 @@ import {
   EyeOff,
   CheckCircle2,
   PartyPopper,
+  File,
 } from 'lucide-react';
 import { supabase } from '../supabaseClient';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import { Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType } from 'docx';
 import '../winners.css';
 
 // ─── Types ───────────────────────────────────────────────────────────
@@ -66,7 +68,7 @@ function Admin() {
   }, [searchQuery, activeTab]);
 
   const [sortField, setSortField] = useState<SortField>('created_at');
-  const [sortDir, setSortDir] = useState<SortDir>('desc');
+  const [sortDir, setSortDir] = useState<SortDir>('asc');
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   
   // Winner action state
@@ -156,7 +158,7 @@ function Admin() {
       const { data, error: fetchError } = await supabase
         .from('registrations')
         .select('*')
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: true });
 
       if (fetchError) throw fetchError;
       setRecords(data ?? []);
@@ -229,6 +231,11 @@ function Admin() {
 
   const recordsToExport = activeTab === 'registrations' ? filteredRecords : confirmedWinners;
 
+  const getRegistrationNumber = (id: string) => {
+    const idx = records.findIndex(r => r.id === id);
+    return idx !== -1 ? idx + 1 : 0;
+  };
+
   // ─── Copy ─────────────────────────────────────────────────────────
   const handleCopy = async () => {
     const rows = recordsToExport.map(
@@ -294,7 +301,7 @@ function Admin() {
       startY: 42,
       head: [['#', 'First Name', 'Last Name', 'Email', 'Mobile Number', 'Temp Password', 'Registered At']],
       body: recordsToExport.map((r, i) => [
-        i + 1,
+        getRegistrationNumber(r.id),
         r.first_name,
         r.last_name,
         r.email,
@@ -319,6 +326,62 @@ function Admin() {
 
     doc.save(`spark_registrations_${new Date().toISOString().slice(0, 10)}.pdf`);
     showToast('PDF Exported Successfully');
+  };
+
+  // ─── DOCX Export ───────────────────────────────────────────────────
+  const handleDocx = async () => {
+    try {
+      const title = activeTab === 'registrations' ? 'SPARK CPD - Registrations' : 'SPARK CPD - Winners';
+
+      const doc = new Document({
+        sections: [
+          {
+            properties: {},
+            children: [
+              new Paragraph({
+                text: title,
+                heading: HeadingLevel.HEADING_1,
+                alignment: AlignmentType.CENTER,
+                spacing: { after: 400 },
+              }),
+              new Paragraph({
+                text: `Generated: ${new Date().toLocaleString()}`,
+                alignment: AlignmentType.RIGHT,
+                spacing: { after: 200 },
+              }),
+              new Paragraph({
+                text: `Total Records: ${recordsToExport.length}`,
+                alignment: AlignmentType.LEFT,
+                spacing: { after: 400 },
+              }),
+              ...recordsToExport.map(
+                (r, i) =>
+                  new Paragraph({
+                    children: [
+                      new TextRun({
+                        text: `${getRegistrationNumber(r.id)}. ${r.first_name} ${r.last_name}`,
+                        size: 24, // 12pt
+                      }),
+                    ],
+                    spacing: { after: 120 },
+                  })
+              ),
+            ],
+          },
+        ],
+      });
+
+      const blob = await Packer.toBlob(doc);
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `spark_registrations_${new Date().toISOString().slice(0, 10)}.docx`;
+      link.click();
+      URL.revokeObjectURL(url);
+      showToast('Word Document Exported Successfully');
+    } catch (err: any) {
+      setError('Failed to export DOCX: ' + err.message);
+    }
   };
 
   // ─── Winner Management ──────────────────────────────────────────
@@ -697,6 +760,10 @@ function Admin() {
               <FileText size={16} />
               <span>PDF</span>
             </button>
+            <button className="admin-action-btn" onClick={handleDocx} title="Download Word (Names Only)">
+              <File size={16} />
+              <span>Word</span>
+            </button>
           </div>
         </div>
 
@@ -768,7 +835,7 @@ function Admin() {
                       className={`admin-table-row ${r.is_winner ? 'row-winner' : ''}`}
                       style={{ animationDelay: `${i * 0.03}s` }}
                     >
-                      <td className="admin-td-num">{(currentPage - 1) * ITEMS_PER_PAGE + i + 1}</td>
+                      <td className="admin-td-num">{getRegistrationNumber(r.id)}</td>
                       <td>{r.first_name}</td>
                       <td>{r.last_name}</td>
                       <td className="admin-td-email">{r.email}</td>
