@@ -300,7 +300,7 @@ function Admin() {
     autoTable(doc, {
       startY: 42,
       head: [['#', 'First Name', 'Last Name', 'Email', 'Mobile Number', 'Temp Password', 'Registered At']],
-      body: recordsToExport.map((r, i) => [
+      body: recordsToExport.map((r) => [
         getRegistrationNumber(r.id),
         r.first_name,
         r.last_name,
@@ -355,7 +355,7 @@ function Admin() {
                 spacing: { after: 400 },
               }),
               ...recordsToExport.map(
-                (r, i) =>
+                (r) =>
                   new Paragraph({
                     children: [
                       new TextRun({
