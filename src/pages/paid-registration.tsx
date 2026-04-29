@@ -27,6 +27,7 @@ function PaidRegistration() {
   const [showShake, setShowShake] = useState(false);
   const [registeredName, setRegisteredName] = useState('');
   const [introKey, setIntroKey] = useState(0);
+  const [hasManuallyEditedPreferredName, setHasManuallyEditedPreferredName] = useState(false);
 
   // Mouse tracking state for the dynamic orange edge light
   const [mousePos, setMousePos] = useState({ x: -1000, y: -1000 });
@@ -60,12 +61,27 @@ function PaidRegistration() {
       filteredValue = value.replace(/[^0-9]/g, '');
     } else if (name === 'givenName' || name === 'lastName' || name === 'middleInitial') {
       filteredValue = value.replace(/[^a-zA-Z\s]/g, '');
+      // Capitalize first letter of every word
+      filteredValue = filteredValue.split(' ').map(word => 
+        word.charAt(0).toUpperCase() + word.slice(1)
+      ).join(' ');
     }
 
-    setFormData(prev => ({
-      ...prev,
-      [name]: filteredValue
-    }));
+    setFormData(prev => {
+      const next = { ...prev, [name]: filteredValue };
+      
+      // Auto-fill logic for preferredName
+      if (!hasManuallyEditedPreferredName && (name === 'givenName' || name === 'middleInitial' || name === 'lastName')) {
+        const mi = next.middleInitial ? ` ${next.middleInitial}.` : '';
+        next.preferredName = `${next.givenName}${mi} ${next.lastName}`.trim().replace(/\s+/g, ' ');
+      }
+      
+      return next;
+    });
+
+    if (name === 'preferredName') {
+      setHasManuallyEditedPreferredName(true);
+    }
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -111,6 +127,7 @@ function PaidRegistration() {
       prcId: ''
     });
     setProofFile(null);
+    setHasManuallyEditedPreferredName(false);
     setSuccess(false);
     setError(null);
     setShowIntro(true);
