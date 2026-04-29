@@ -17,9 +17,7 @@ import {
   CheckCircle2,
   PartyPopper,
   File,
-  CreditCard,
-  DollarSign,
-  ExternalLink
+  CreditCard
 } from 'lucide-react';
 import { supabase } from '../supabaseClient';
 import jsPDF from 'jspdf';
@@ -428,11 +426,6 @@ function Admin() {
   const handleDocx = async () => {
     try {
       const title = activeTab === 'registrations' ? 'SPARK CPD - Raffle Registrations' : (activeTab === 'paid' ? 'SPARK CPD - Paid Registrations' : 'SPARK CPD - Raffle Winners');
-
-      const participants = (recordsToExport as any[]).map(r => {
-        if (activeTab === 'paid') return `${r.given_name} ${r.last_name}`;
-        return `${r.first_name} ${r.last_name}`;
-      });
 
       const doc = new Document({
         sections: [
