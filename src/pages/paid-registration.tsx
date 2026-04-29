@@ -505,7 +505,7 @@ function PaidRegistration() {
                           <h4 style={{ color: 'var(--brand-black)', marginBottom: '0.8rem', fontSize: '1.1rem', fontWeight: 'bold' }}>STEP 1: Scan GCash QR</h4>
                           <p style={{ fontSize: '0.9rem', marginBottom: '1rem' }}>(Note: We only accept GCash Payment for now)</p>
                           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', background: '#f8fafc', padding: '20px', borderRadius: '12px', border: '1px solid var(--brand-border)' }}>
-                            <img src="/gcash-qr.jpg" alt="GCash QR Code" style={{ width: '180px', height: '180px', objectFit: 'contain', background: '#fff', padding: '10px', borderRadius: '12px', marginBottom: '15px', border: '1px dashed #ccc' }} />
+                            <img src="/zoomed-gcash-qr.png" alt="GCash QR Code" style={{ width: '180px', height: '180px', objectFit: 'contain', background: '#fff', padding: '10px', borderRadius: '12px', marginBottom: '15px', border: '1px dashed #ccc' }} />
                             <p style={{ color: 'var(--brand-black)', fontWeight: 'bold', fontSize: '1.1rem' }}>Regina Schelle Palabrica</p>
                             <p style={{ fontSize: '1.2rem', letterSpacing: '1px', marginTop: '5px' }}>0915 671 4332</p>
                           </div>
