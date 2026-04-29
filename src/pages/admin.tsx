@@ -17,6 +17,9 @@ import {
   CheckCircle2,
   PartyPopper,
   File,
+  CreditCard,
+  DollarSign,
+  ExternalLink
 } from 'lucide-react';
 import { supabase } from '../supabaseClient';
 import jsPDF from 'jspdf';
@@ -38,6 +41,23 @@ interface Registration {
   email_sent_at?: string;
 }
 
+interface PaidRegistration {
+  id: string;
+  created_at: string;
+  given_name: string;
+  middle_initial?: string;
+  last_name: string;
+  preferred_name: string;
+  email: string;
+  contact_number: string;
+  position: string;
+  school_name: string;
+  region: string;
+  division: string;
+  prc_id: string;
+  proof_of_payment_url: string;
+}
+
 type SortField = 'created_at' | 'first_name' | 'last_name' | 'email';
 type SortDir = 'asc' | 'desc';
 
@@ -55,13 +75,14 @@ function Admin() {
 
   // Data state
   const [records, setRecords] = useState<Registration[]>([]);
+  const [paidRecords, setPaidRecords] = useState<PaidRegistration[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // UI state
-  const [activeTab, setActiveTab] = useState<'registrations' | 'winners'>('registrations');
+  const [activeTab, setActiveTab] = useState<'registrations' | 'winners' | 'paid'>('registrations');
   const [searchQuery, setSearchQuery] = useState('');
-  
+
   // Reset page on search or tab change
   useEffect(() => {
     setCurrentPage(1);
@@ -70,7 +91,7 @@ function Admin() {
   const [sortField, setSortField] = useState<SortField>('created_at');
   const [sortDir, setSortDir] = useState<SortDir>('asc');
   const [toastMessage, setToastMessage] = useState<string | null>(null);
-  
+
   // Winner action state
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [selectedParticipants, setSelectedParticipants] = useState<Set<string>>(new Set());
@@ -78,6 +99,9 @@ function Admin() {
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
   const ITEMS_PER_PAGE = 10;
+
+  // Proof modal state
+  const [proofModalUrl, setProofModalUrl] = useState<string | null>(null);
 
   const tableRef = useRef<HTMLTableElement>(null);
 
@@ -99,6 +123,7 @@ function Admin() {
   useEffect(() => {
     if (isAuthenticated) {
       fetchRecords();
+      fetchPaidRecords();
     }
   }, [isAuthenticated]);
 
@@ -169,6 +194,20 @@ function Admin() {
     }
   };
 
+  const fetchPaidRecords = async () => {
+    try {
+      const { data, error: fetchError } = await supabase
+        .from('paid_registration')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (fetchError) throw fetchError;
+      setPaidRecords(data ?? []);
+    } catch (err: any) {
+      console.error('Failed to fetch paid records:', err);
+    }
+  };
+
   // ─── Sorting & Filtering ─────────────────────────────────────────
   const handleSort = (field: SortField) => {
     if (sortField === field) {
@@ -229,7 +268,26 @@ function Admin() {
     );
   });
 
-  const recordsToExport = activeTab === 'registrations' ? filteredRecords : confirmedWinners;
+  const filteredPaidRecords = paidRecords.filter(r => {
+    if (!searchQuery.trim()) return true;
+    const q = searchQuery.toLowerCase();
+    return (
+      r.given_name.toLowerCase().includes(q) ||
+      r.last_name.toLowerCase().includes(q) ||
+      r.email.toLowerCase().includes(q) ||
+      r.school_name.toLowerCase().includes(q) ||
+      r.prc_id.toLowerCase().includes(q)
+    );
+  });
+
+  const paginatedPaidRecords = filteredPaidRecords.slice(
+    (currentPage - 1) * ITEMS_PER_PAGE,
+    currentPage * ITEMS_PER_PAGE
+  );
+
+  const totalPagesForPaid = Math.ceil(filteredPaidRecords.length / ITEMS_PER_PAGE);
+
+  const recordsToExport = activeTab === 'registrations' ? filteredRecords : (activeTab === 'paid' ? filteredPaidRecords : confirmedWinners);
 
   const getRegistrationNumber = (id: string) => {
     const idx = records.findIndex(r => r.id === id);
@@ -238,10 +296,12 @@ function Admin() {
 
   // ─── Copy ─────────────────────────────────────────────────────────
   const handleCopy = async () => {
-    const rows = recordsToExport.map(
-      (r) =>
-        `${r.first_name} ${r.last_name} | ${r.email} | ${r.mobile_number}`
-    );
+    const rows = recordsToExport.map((r: any) => {
+      if (activeTab === 'paid') {
+        return `${r.given_name} ${r.last_name} | ${r.email} | ${r.contact_number}`;
+      }
+      return `${r.first_name} ${r.last_name} | ${r.email} | ${r.mobile_number}`;
+    });
     const text = rows.join('\n');
 
     try {
@@ -261,18 +321,36 @@ function Admin() {
 
   // ─── CSV Export ───────────────────────────────────────────────────
   const handleCSV = () => {
-    const header = ['First Name', 'Last Name', 'Email', 'Mobile Number', 'Temp Password', 'Registered At'];
-    const rows = recordsToExport.map((r) => [
-      r.first_name,
-      r.last_name,
-      r.email,
-      r.mobile_number,
-      r.temporary_password,
-      new Date(r.created_at).toLocaleString(),
-    ]);
+    let header, rows;
+    if (activeTab === 'paid') {
+      header = ['First Name', 'Last Name', 'Email', 'Contact Number', 'Position', 'School', 'Region', 'Division', 'PRC ID', 'Proof URL', 'Registered At'];
+      rows = (recordsToExport as PaidRegistration[]).map((r) => [
+        r.given_name,
+        r.last_name,
+        r.email,
+        r.contact_number,
+        r.position,
+        r.school_name,
+        r.region,
+        r.division,
+        r.prc_id,
+        r.proof_of_payment_url,
+        new Date(r.created_at).toLocaleString(),
+      ]);
+    } else {
+      header = ['First Name', 'Last Name', 'Email', 'Mobile Number', 'Temp Password', 'Registered At'];
+      rows = (recordsToExport as Registration[]).map((r) => [
+        r.first_name,
+        r.last_name,
+        r.email,
+        r.mobile_number,
+        r.temporary_password,
+        new Date(r.created_at).toLocaleString(),
+      ]);
+    }
 
     const csvContent = [header, ...rows]
-      .map((row) => row.map((cell) => `"${cell}"`).join(','))
+      .map((row) => row.map((cell) => `"${cell || ''}"`).join(','))
       .join('\n');
 
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
@@ -290,17 +368,29 @@ function Admin() {
     const doc = new jsPDF({ orientation: 'landscape' });
     doc.setFontSize(18);
     doc.setTextColor(255, 94, 0);
-    const title = activeTab === 'registrations' ? 'SPARK CPD - Registrations' : 'SPARK CPD - Winners';
+    const title = activeTab === 'registrations' ? 'SPARK CPD - Raffle Registrations' : (activeTab === 'paid' ? 'SPARK CPD - Paid Registrations' : 'SPARK CPD - Raffle Winners');
     doc.text(title, 14, 20);
     doc.setFontSize(10);
     doc.setTextColor(100);
     doc.text(`Generated: ${new Date().toLocaleString()}`, 14, 28);
     doc.text(`Total Records: ${recordsToExport.length}`, 14, 34);
 
-    autoTable(doc, {
-      startY: 42,
-      head: [['#', 'First Name', 'Last Name', 'Email', 'Mobile Number', 'Temp Password', 'Registered At']],
-      body: recordsToExport.map((r) => [
+    let head, body;
+    if (activeTab === 'paid') {
+      head = [['#', 'Name', 'Email', 'Contact', 'Position', 'School', 'PRC ID', 'Registered At']];
+      body = (recordsToExport as PaidRegistration[]).map((r, i) => [
+        i + 1,
+        `${r.given_name} ${r.last_name}`,
+        r.email,
+        r.contact_number,
+        r.position,
+        r.school_name,
+        r.prc_id,
+        new Date(r.created_at).toLocaleDateString('en-PH'),
+      ]);
+    } else {
+      head = [['#', 'First Name', 'Last Name', 'Email', 'Mobile Number', 'Temp Password', 'Registered At']];
+      body = (recordsToExport as Registration[]).map((r) => [
         getRegistrationNumber(r.id),
         r.first_name,
         r.last_name,
@@ -308,7 +398,13 @@ function Admin() {
         r.mobile_number,
         r.temporary_password,
         new Date(r.created_at).toLocaleString(),
-      ]),
+      ]);
+    }
+
+    autoTable(doc, {
+      startY: 42,
+      head,
+      body,
       headStyles: {
         fillColor: [15, 23, 42], // deep black slate for modern look
         textColor: 255,
@@ -331,7 +427,12 @@ function Admin() {
   // ─── DOCX Export ───────────────────────────────────────────────────
   const handleDocx = async () => {
     try {
-      const title = activeTab === 'registrations' ? 'SPARK CPD - Registrations' : 'SPARK CPD - Winners';
+      const title = activeTab === 'registrations' ? 'SPARK CPD - Raffle Registrations' : (activeTab === 'paid' ? 'SPARK CPD - Paid Registrations' : 'SPARK CPD - Raffle Winners');
+
+      const participants = (recordsToExport as any[]).map(r => {
+        if (activeTab === 'paid') return `${r.given_name} ${r.last_name}`;
+        return `${r.first_name} ${r.last_name}`;
+      });
 
       const doc = new Document({
         sections: [
@@ -355,15 +456,15 @@ function Admin() {
                 spacing: { after: 400 },
               }),
               ...recordsToExport.map(
-                (r) =>
+                (r: any, i: number) =>
                   new Paragraph({
                     children: [
                       new TextRun({
-                        text: `${getRegistrationNumber(r.id)}. ${r.first_name} ${r.last_name}`,
+                        text: `${activeTab === 'paid' ? (i + 1) : getRegistrationNumber(r.id)}. ${activeTab === 'paid' ? r.given_name : r.first_name} ${r.last_name}`,
                         size: 24, // 12pt
                       }),
                     ],
-                    spacing: { after: 120 },
+                    spacing: { before: 120 },
                   })
               ),
             ],
@@ -417,7 +518,7 @@ function Admin() {
         .eq('id', id);
 
       if (updateError) throw updateError;
-      
+
       setRecords(prev => prev.map(r => r.id === id ? { ...r, is_winner: true } : r));
       setSelectedParticipants(prev => { const next = new Set(prev); next.delete(id); return next; });
       showToast('Participant marked as winner! 🏆');
@@ -439,7 +540,7 @@ function Admin() {
         .in('id', ids);
 
       if (updateError) throw updateError;
-      
+
       setRecords(prev => prev.map(r => ids.includes(r.id) ? { ...r, is_winner: true } : r));
       setSelectedParticipants(new Set());
       showToast(`${ids.length} participant(s) marked as winners! 🏆`);
@@ -478,14 +579,14 @@ function Admin() {
       // 2. Update Supabase only after successful send
       const { error: updateError } = await supabase
         .from('registrations')
-        .update({ 
+        .update({
           email_sent: true,
           email_sent_at: new Date().toISOString()
         })
         .eq('id', id);
 
       if (updateError) throw updateError;
-      
+
       setRecords(prev => prev.map(r => r.id === id ? { ...r, email_sent: true, email_sent_at: new Date().toISOString() } : r));
       showToast('Email sent successfully! ✅');
     } catch (err: any) {
@@ -535,7 +636,7 @@ function Admin() {
         // 3. Update Supabase for successfully sent emails
         const { error: updateError } = await supabase
           .from('registrations')
-          .update({ 
+          .update({
             email_sent: true,
             email_sent_at: new Date().toISOString()
           })
@@ -543,9 +644,9 @@ function Admin() {
 
         if (updateError) throw updateError;
 
-        setRecords(prev => prev.map(r => 
+        setRecords(prev => prev.map(r =>
           sentIds.includes(r.id)
-            ? { ...r, email_sent: true, email_sent_at: new Date().toISOString() } 
+            ? { ...r, email_sent: true, email_sent_at: new Date().toISOString() }
             : r
         ));
       }
@@ -698,7 +799,7 @@ function Admin() {
             </div>
             <div>
               <span className="admin-stat-number">{records.length}</span>
-              <span className="admin-stat-label">Total Registrations</span>
+              <span className="admin-stat-label">Raffle Registrants</span>
             </div>
           </div>
           <div className="admin-stat-card">
@@ -707,26 +808,39 @@ function Admin() {
             </div>
             <div>
               <span className="admin-stat-number">{records.filter(r => r.is_winner).length}</span>
-              <span className="admin-stat-label">Total Winners</span>
+              <span className="admin-stat-label">Raffle Winners</span>
+            </div>
+          </div>
+          <div className="admin-stat-card">
+            <div className="admin-stat-icon success" style={{ background: 'rgba(255, 94, 0, 0.1)', color: 'var(--brand-orange)' }}>
+              <CreditCard size={24} />
+            </div>
+            <div>
+              <span className="admin-stat-number">{paidRecords.length}</span>
+              <span className="admin-stat-label">Paid Registrants</span>
             </div>
           </div>
         </div>
 
         {/* Tab Switcher */}
         <div className="admin-tabs">
-          <button 
+          <button
             className={`admin-tab ${activeTab === 'registrations' ? 'active' : ''}`}
             onClick={() => setActiveTab('registrations')}
           >
-            <Users size={18} />
-            Registrations
+            Raffle
           </button>
-          <button 
+          <button
             className={`admin-tab ${activeTab === 'winners' ? 'active' : ''}`}
             onClick={() => setActiveTab('winners')}
           >
-            <ChevronUp size={18} style={{ transform: 'rotate(45deg)' }} />
             Manage Winners
+          </button>
+          <button
+            className={`admin-tab ${activeTab === 'paid' ? 'active' : ''}`}
+            onClick={() => setActiveTab('paid')}
+          >
+            Paid
           </button>
         </div>
 
@@ -776,7 +890,7 @@ function Admin() {
         )}
 
         {/* Content based on Active Tab */}
-        {activeTab === 'registrations' ? (
+        {activeTab === 'registrations' && (
           <div className="admin-table-container">
             <table className="admin-table" ref={tableRef}>
               <thead>
@@ -863,19 +977,19 @@ function Admin() {
             {/* Pagination Controls */}
             {totalPages > 1 && (
               <div className="admin-pagination">
-                <button 
+                <button
                   className="pagination-btn"
                   onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
                   disabled={currentPage === 1}
                 >
                   Previous
                 </button>
-                
+
                 <div className="pagination-info">
                   Page <strong>{currentPage}</strong> of <strong>{totalPages}</strong>
                 </div>
 
-                <button 
+                <button
                   className="pagination-btn"
                   onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
                   disabled={currentPage === totalPages}
@@ -885,7 +999,118 @@ function Admin() {
               </div>
             )}
           </div>
-        ) : (
+        )}
+
+        {activeTab === 'paid' && (
+          <div className="admin-table-container">
+            <table className="admin-table">
+              <thead>
+                <tr>
+                  <th className="admin-th-num">#</th>
+                  <th>Full Name</th>
+                  <th>Email</th>
+                  <th>Position</th>
+                  <th>School</th>
+                  <th>PRC ID</th>
+                  <th>Payment Proof</th>
+                  <th>Date</th>
+                </tr>
+              </thead>
+              <tbody>
+                {loading ? (
+                  Array.from({ length: 5 }).map((_, idx) => (
+                    <tr key={`skeleton-paid-${idx}`} className="skeleton-row">
+                      <td colSpan={8}><div className="skeleton-box" style={{ width: '100%' }}></div></td>
+                    </tr>
+                  ))
+                ) : filteredPaidRecords.length === 0 ? (
+                  <tr>
+                    <td colSpan={8}>
+                      <div className="admin-empty">
+                        <CreditCard size={48} />
+                        <p>{searchQuery ? 'No matching paid records found.' : 'No paid registrations yet.'}</p>
+                      </div>
+                    </td>
+                  </tr>
+                ) : (
+                  paginatedPaidRecords.map((r, i) => (
+                    <tr
+                      key={r.id}
+                      className="admin-table-row"
+                      style={{ animationDelay: `${i * 0.03}s` }}
+                    >
+                      <td className="admin-td-num">{((currentPage - 1) * ITEMS_PER_PAGE) + i + 1}</td>
+                      <td style={{ fontWeight: '600' }}>{r.given_name} {r.last_name}</td>
+                      <td className="admin-td-email">{r.email}</td>
+                      <td>{r.position}</td>
+                      <td>{r.school_name}</td>
+                      <td>{r.prc_id}</td>
+                      <td>
+                        <button
+                          onClick={() => setProofModalUrl(r.proof_of_payment_url)}
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '6px',
+                            padding: '0.4rem 0.8rem',
+                            height: '36px',
+                            borderRadius: '8px',
+                            border: 'none',
+                            background: 'var(--brand-orange)',
+                            color: '#fff',
+                            cursor: 'pointer',
+                            fontSize: '0.8rem',
+                            fontWeight: '600',
+                            transition: 'all 0.2s ease',
+                          }}
+                          title="View Payment Proof"
+                        >
+                          <Eye size={16} />
+                          View
+                        </button>
+                      </td>
+                      <td className="admin-td-date">
+                        {new Date(r.created_at).toLocaleDateString('en-PH', {
+                          year: 'numeric',
+                          month: 'short',
+                          day: 'numeric',
+                        })}
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+
+            {/* Pagination Controls */}
+            {totalPagesForPaid > 1 && (
+              <div className="admin-pagination">
+                <button
+                  className="pagination-btn"
+                  onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                  disabled={currentPage === 1}
+                >
+                  Previous
+                </button>
+
+                <div className="pagination-info">
+                  Page <strong>{currentPage}</strong> of <strong>{totalPagesForPaid}</strong>
+                </div>
+
+                <button
+                  className="pagination-btn"
+                  onClick={() => setCurrentPage(prev => Math.min(totalPagesForPaid, prev + 1))}
+                  disabled={currentPage === totalPagesForPaid}
+                >
+                  Next
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+
+        {activeTab === 'winners' && (
           <div className="winners-management-grid">
             {/* Eligible Section */}
             <div className="management-card">
@@ -935,7 +1160,7 @@ function Admin() {
                           <span className="user-email">{r.email}</span>
                         </div>
                       </div>
-                      <button 
+                      <button
                         className="btn-select-winner"
                         onClick={() => handleSetWinner(r.id)}
                         disabled={!!actionLoading}
@@ -952,7 +1177,7 @@ function Admin() {
             <div className="management-card highlighted">
               <div className="management-card-header">
                 <h3>Confirmed Winners 🏆</h3>
-                <button 
+                <button
                   className="bulk-action-btn"
                   onClick={handleSendAllEmails}
                   disabled={!!actionLoading || records.filter(r => r.is_winner && !r.email_sent).length === 0}
@@ -978,7 +1203,7 @@ function Admin() {
                         </div>
                       </div>
                       {!r.email_sent && (
-                        <button 
+                        <button
                           className="btn-send-email"
                           onClick={() => handleSendEmail(r.id)}
                           disabled={!!actionLoading}
@@ -994,6 +1219,73 @@ function Admin() {
           </div>
         )}
       </main>
+
+      {/* Payment Proof Modal */}
+      {proofModalUrl && (
+        <div
+          onClick={() => setProofModalUrl(null)}
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0, 0, 0, 0.75)',
+            backdropFilter: 'blur(8px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 9999,
+            animation: 'fadeIn 0.2s ease',
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              position: 'relative',
+              maxWidth: '90vw',
+              maxHeight: '90vh',
+              background: '#fff',
+              borderRadius: '16px',
+              padding: '1rem',
+              boxShadow: '0 25px 60px rgba(0,0,0,0.4)',
+            }}
+          >
+            <button
+              onClick={() => setProofModalUrl(null)}
+              style={{
+                position: 'absolute',
+                top: '-12px',
+                right: '-12px',
+                width: '36px',
+                height: '36px',
+                borderRadius: '50%',
+                border: 'none',
+                background: 'var(--brand-orange)',
+                color: '#fff',
+                fontSize: '1.2rem',
+                fontWeight: 'bold',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                boxShadow: '0 4px 12px rgba(255, 94, 0, 0.4)',
+                zIndex: 1,
+              }}
+              title="Close"
+            >
+              ✕
+            </button>
+            <img
+              src={proofModalUrl}
+              alt="Payment Proof"
+              style={{
+                maxWidth: '85vw',
+                maxHeight: '82vh',
+                borderRadius: '10px',
+                objectFit: 'contain',
+              }}
+            />
+          </div>
+        </div>
+      )}
 
       {/* Global Application Toast */}
       {toastMessage && (
