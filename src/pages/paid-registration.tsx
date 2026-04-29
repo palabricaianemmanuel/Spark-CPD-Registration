@@ -62,20 +62,20 @@ function PaidRegistration() {
     } else if (name === 'givenName' || name === 'lastName' || name === 'middleInitial') {
       filteredValue = value.replace(/[^a-zA-Z\s]/g, '');
       // Capitalize first letter of every word
-      filteredValue = filteredValue.split(' ').map(word => 
+      filteredValue = filteredValue.split(' ').map(word =>
         word.charAt(0).toUpperCase() + word.slice(1)
       ).join(' ');
     }
 
     setFormData(prev => {
       const next = { ...prev, [name]: filteredValue };
-      
+
       // Auto-fill logic for preferredName
       if (!hasManuallyEditedPreferredName && (name === 'givenName' || name === 'middleInitial' || name === 'lastName')) {
         const mi = next.middleInitial ? ` ${next.middleInitial}.` : '';
         next.preferredName = `${next.givenName}${mi} ${next.lastName}`.trim().replace(/\s+/g, ' ');
       }
-      
+
       return next;
     });
 
@@ -386,17 +386,17 @@ function PaidRegistration() {
 
                     <div style={{ background: '#f8fafc', padding: '20px', borderRadius: '12px', marginBottom: '1.5rem', border: '1px solid var(--brand-border)' }}>
                       <div style={{ display: 'grid', gridTemplateColumns: '100px 1fr', gap: '10px' }}>
-                        <strong style={{ color: 'var(--brand-black)' }}>WHAT:</strong> <span>Teacher Empowerment - Cultivating a Growth Mindset</span>
-                        <strong style={{ color: 'var(--brand-black)' }}>WHEN:</strong> <span>April 18 and 25, 2026</span>
+                        <strong style={{ color: 'var(--brand-black)' }}>WHAT:</strong> <span>Financial Literacy</span>
+                        <strong style={{ color: 'var(--brand-black)' }}>WHEN:</strong> <span>May 29 to 31, 2026</span>
                         <strong style={{ color: 'var(--brand-black)' }}>WHERE:</strong> <span>Zoom Online Meeting</span>
                         <strong style={{ color: 'var(--brand-black)' }}>TIME:</strong> <span>8:00 AM to 11:00 AM</span>
-                        <strong style={{ color: 'var(--brand-black)' }}>DURATION:</strong> <span>4 Hours</span>
+                        <strong style={{ color: 'var(--brand-black)' }}>DURATION:</strong> <span>3 Hours</span>
                       </div>
                     </div>
 
                     <div style={{ marginBottom: '2rem' }}>
                       <h4 style={{ color: 'var(--brand-black)', marginBottom: '0.8rem', fontSize: '1.1rem', fontWeight: 'bold' }}>Topic Description:</h4>
-                      <p>This CPD program equips educators with growth mindset strategies to enhance student engagement, address learning challenges, and design effective classroom interventions through reflective and collaborative practices.</p>
+                      <p>This CPD program equips participants with practical budgeting strategies they can immediately apply to manage their finances effectively by tracking income and expenses, identifying spending habits, setting financial goals, and building their own emergency funds. </p>
                     </div>
 
                     <div style={{ background: 'rgba(255, 94, 0, 0.05)', border: '1px solid rgba(255, 94, 0, 0.2)', padding: '20px', borderRadius: '12px' }}>
