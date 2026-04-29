@@ -231,20 +231,20 @@ function PaidRegistration() {
         </div>
       </div>
 
-      <div 
+      <div
         onMouseMove={(e) => setMousePos({ x: e.clientX, y: e.clientY })}
         style={{
-        minHeight: '100vh',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: '1rem',
-        background: '#f1f5f9', /* Smoke/slate color */
-        position: 'relative',
-        zIndex: 10
-      }}>
+          minHeight: '100vh',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '1rem',
+          background: '#f1f5f9', /* Smoke/slate color */
+          position: 'relative',
+          zIndex: 10
+        }}>
         {/* Dynamic Spotlight Glow */}
-        <div 
+        <div
           style={{
             position: 'fixed',
             top: 0,
@@ -258,21 +258,21 @@ function PaidRegistration() {
           }}
         />
 
-        <div 
-          className={`auth-card registration-card ${showShake ? 'shake' : ''}`} 
+        <div
+          className={`auth-card registration-card ${showShake ? 'shake' : ''}`}
           onMouseEnter={() => setIsInsideForm(true)}
           onMouseLeave={() => setIsInsideForm(false)}
           style={{
-          width: '100%',
-          maxWidth: '850px',
-          margin: '0 auto',
-          background: 'rgba(255, 255, 255, 0.95)',
-          backdropFilter: 'blur(12px)',
-          border: '1px solid rgba(255, 255, 255, 0.5)',
-          padding: '2rem',
-          boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
-          borderRadius: '16px'
-        }}>
+            width: '100%',
+            maxWidth: '850px',
+            margin: '0 auto',
+            background: 'rgba(255, 255, 255, 0.95)',
+            backdropFilter: 'blur(12px)',
+            border: '1px solid rgba(255, 255, 255, 0.5)',
+            padding: '2rem',
+            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+            borderRadius: '16px'
+          }}>
           {success ? (
             <div className="success-phase" style={{ textAlign: 'center', padding: '2rem 0' }}>
               <div className="success-icon-wrapper" style={{ margin: '0 auto 1.5rem auto' }}>
