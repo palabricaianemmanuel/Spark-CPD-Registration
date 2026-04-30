@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Loader2, CheckCircle, AlertCircle, Home, Upload, Check } from 'lucide-react';
+import { Loader2, CheckCircle, AlertCircle, Home, Upload, Check, ChevronDown } from 'lucide-react';
 import { supabase } from '../supabaseClient';
 
 const PH_REGIONS: Record<string, string[]> = {
@@ -20,6 +20,84 @@ const PH_REGIONS: Record<string, string[]> = {
   "NCR (National Capital Region)": ["Caloocan City", "Las Piñas City", "Makati City", "Malabon City", "Mandaluyong City", "Manila", "Marikina City", "Muntinlupa City", "Navotas City", "Parañaque City", "Pasay City", "Pasig City", "Quezon City", "San Juan City", "Taguig City", "Valenzuela City"],
   "CAR (Cordillera Administrative Region)": ["Abra", "Apayao", "Benguet", "Ifugao", "Kalinga", "Mountain Province", "Baguio City", "Tabuk City"],
   "BARMM (Bangsamoro Autonomous Region in Muslim Mindanao)": ["Basilan", "Lanao del Sur", "Maguindanao del Norte", "Maguindanao del Sur", "Sulu", "Tawi-Tawi", "Cotabato City", "Marawi City"]
+};
+
+interface CustomSelectProps {
+  options: string[];
+  value: string;
+  onChange: (val: string) => void;
+  placeholder: string;
+  disabled?: boolean;
+  errorGlow?: boolean;
+  onDisabledClick?: () => void;
+}
+
+const CustomSelect: React.FC<CustomSelectProps> = ({ options, value, onChange, placeholder, disabled, errorGlow, onDisabledClick }) => {
+  const [isOpen, setIsOpen] = useState(false);
+
+  const handleToggle = () => {
+    if (disabled) {
+      if (onDisabledClick) onDisabledClick();
+      return;
+    }
+    setIsOpen(!isOpen);
+  };
+
+  const handleSelect = (option: string) => {
+    onChange(option);
+    setIsOpen(false);
+  };
+
+  return (
+    <div className="relative w-full" style={{ zIndex: isOpen ? 50 : 1 }}>
+      {isOpen && (
+        <div 
+          className="fixed inset-0 z-40"
+          onClick={() => setIsOpen(false)}
+        />
+      )}
+      
+      <div 
+        className={`form-input flex justify-between items-center cursor-pointer transition-all duration-300 relative z-50
+          ${disabled ? 'opacity-60 cursor-not-allowed bg-slate-50' : 'bg-white'}
+          ${errorGlow ? 'shadow-[0_0_15px_rgba(255,94,0,0.4)] border-[var(--brand-orange)] ring-1 ring-[var(--brand-orange)]' : ''}
+          ${isOpen ? 'border-[var(--brand-orange)] ring-1 ring-[var(--brand-orange)]' : 'border-[var(--brand-border)]'}
+        `}
+        style={{ padding: '0.6rem 1rem', minHeight: '42px', borderRadius: '8px' }}
+        onClick={handleToggle}
+      >
+        <span className={value ? 'text-[var(--brand-black)]' : 'text-gray-400'} style={{ fontSize: '0.95rem' }}>
+          {value || placeholder}
+        </span>
+        <ChevronDown 
+          size={18} 
+          className={`transition-transform duration-300 ${isOpen ? 'rotate-180 text-[var(--brand-orange)]' : 'text-gray-400'}`} 
+        />
+      </div>
+
+      <div 
+        className={`absolute top-full left-0 w-full mt-2 bg-white border border-[var(--brand-border)] rounded-lg shadow-xl z-50 overflow-hidden transition-all duration-200 transform origin-top
+          ${isOpen ? 'opacity-100 scale-y-100' : 'opacity-0 scale-y-0 pointer-events-none'}
+        `}
+      >
+        <div className="max-h-60 overflow-y-auto py-1">
+          {options.length > 0 ? options.map((opt) => (
+            <div
+              key={opt}
+              className={`px-4 py-2.5 cursor-pointer transition-colors duration-200 text-sm
+                ${value === opt ? 'bg-[rgba(255,94,0,0.1)] text-[var(--brand-orange)] font-medium' : 'text-[var(--brand-text)] hover:bg-slate-50'}
+              `}
+              onClick={() => handleSelect(opt)}
+            >
+              {opt}
+            </div>
+          )) : (
+            <div className="px-4 py-3 text-sm text-gray-500 italic">No options available</div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
 };
 
 function PaidRegistration() {
@@ -48,6 +126,16 @@ function PaidRegistration() {
   const [registeredName, setRegisteredName] = useState('');
   const [introKey, setIntroKey] = useState(0);
   const [hasManuallyEditedPreferredName, setHasManuallyEditedPreferredName] = useState(false);
+
+  const [regionErrorGlow, setRegionErrorGlow] = useState(false);
+
+  const handleDivisionClickWhenDisabled = () => {
+    if (!formData.region) {
+      setRegionErrorGlow(true);
+      triggerShake();
+      setTimeout(() => setRegionErrorGlow(false), 2000);
+    }
+  };
 
   // Mouse tracking state for the dynamic orange edge light
   const [mousePos, setMousePos] = useState({ x: -1000, y: -1000 });
@@ -532,21 +620,24 @@ function PaidRegistration() {
                       </div>
                       <div className="form-group" style={{ marginBottom: '0' }}>
                         <label className="form-label" style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: '0.2rem' }}>REGION *</label>
-                        <select name="region" className="form-input" style={{ padding: '0.6rem 1rem', appearance: 'auto', backgroundColor: '#fff' }} value={formData.region} onChange={handleChange as any} required>
-                          <option value="">Select Region</option>
-                          {Object.keys(PH_REGIONS).map(reg => (
-                            <option key={reg} value={reg}>{reg}</option>
-                          ))}
-                        </select>
+                        <CustomSelect 
+                          options={Object.keys(PH_REGIONS)}
+                          value={formData.region}
+                          onChange={(val) => handleChange({ target: { name: 'region', value: val } } as any)}
+                          placeholder="Select Region"
+                          errorGlow={regionErrorGlow}
+                        />
                       </div>
                       <div className="form-group" style={{ marginBottom: '0' }}>
                         <label className="form-label" style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: '0.2rem' }}>DIVISION *</label>
-                        <select name="division" className="form-input" style={{ padding: '0.6rem 1rem', appearance: 'auto', backgroundColor: '#fff' }} value={formData.division} onChange={handleChange as any} disabled={!formData.region} required>
-                          <option value="">Select Division</option>
-                          {formData.region && PH_REGIONS[formData.region]?.map(div => (
-                            <option key={div} value={div}>{div}</option>
-                          ))}
-                        </select>
+                        <CustomSelect 
+                          options={formData.region ? PH_REGIONS[formData.region] : []}
+                          value={formData.division}
+                          onChange={(val) => handleChange({ target: { name: 'division', value: val } } as any)}
+                          placeholder="Select Division"
+                          disabled={!formData.region}
+                          onDisabledClick={handleDivisionClickWhenDisabled}
+                        />
                       </div>
                     </div>
                   </div>
