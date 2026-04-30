@@ -325,7 +325,7 @@ function Admin() {
   const handleCSV = () => {
     let header, rows;
     if (activeTab === 'paid') {
-      header = ['First Name', 'Last Name', 'Email', 'Contact Number', 'Position', 'School', 'Region', 'Division', 'PRC ID', 'Proof URL', 'Registered At'];
+      header = ['First Name', 'Last Name', 'Email', 'Contact Number', 'Position', 'School', 'Region', 'Division', 'PRC ID', 'Proof URL', 'Payment ID', 'Registered At'];
       rows = (recordsToExport as PaidRegistration[]).map((r) => [
         r.given_name,
         r.last_name,
@@ -337,6 +337,7 @@ function Admin() {
         r.division,
         r.prc_id,
         r.proof_of_payment_url,
+        r.paymongo_payment_id || '',
         new Date(r.created_at).toLocaleString(),
       ]);
     } else {
@@ -1009,6 +1010,7 @@ function Admin() {
                   <th>Position</th>
                   <th>School</th>
                   <th>PRC ID</th>
+                  <th>Transaction ID</th>
                   <th>Payment Status</th>
                   <th>Date</th>
                 </tr>
@@ -1042,6 +1044,9 @@ function Admin() {
                       <td>{r.position}</td>
                       <td>{r.school_name}</td>
                       <td>{r.prc_id}</td>
+                      <td style={{ fontSize: '0.8rem', fontFamily: 'monospace', color: '#64748b' }}>
+                        {r.paymongo_payment_id ? r.paymongo_payment_id : 'N/A'}
+                      </td>
                       <td>
                         {r.payment_status === 'paid' ? (
                           <span style={{
