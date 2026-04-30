@@ -374,7 +374,7 @@ function PaidRegistration() {
 
 
                     <div style={{ background: '#f8fafc', padding: '20px', borderRadius: '12px', marginBottom: '1.5rem', border: '1px solid var(--brand-border)' }}>
-                      <div style={{ display: 'grid', gridTemplateColumns: '100px 1fr', gap: '10px' }}>
+                      <div className="grid grid-cols-1 sm:grid-cols-[100px_1fr] gap-2.5">
                         <strong style={{ color: 'var(--brand-black)' }}>WHAT:</strong> <span>Financial Literacy</span>
                         <strong style={{ color: 'var(--brand-black)' }}>WHEN:</strong> <span>May 29 to 31, 2026</span>
                         <strong style={{ color: 'var(--brand-black)' }}>WHERE:</strong> <span>Zoom Online Meeting</span>
@@ -442,7 +442,7 @@ function PaidRegistration() {
                   <div className="step-3 fade-in">
                     <h3 style={{ color: 'var(--brand-black-deep)', marginBottom: '1.5rem', fontSize: '1.3rem', fontWeight: 'bold' }}>Personal Details</h3>
 
-                    <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 2fr', gap: '1rem', marginBottom: '1rem' }}>
+                    <div className="grid grid-cols-1 md:grid-cols-[2fr_1fr_2fr] gap-4 mb-4">
                       <div className="form-group" style={{ marginBottom: '0' }}>
                         <label className="form-label" style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: '0.2rem' }}>GIVEN NAME *</label>
                         <input type="text" name="givenName" className="form-input" style={{ padding: '0.6rem 1rem' }} value={formData.givenName} onChange={handleChange} required />
@@ -457,7 +457,7 @@ function PaidRegistration() {
                       </div>
                     </div>
 
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                       <div className="form-group" style={{ marginBottom: '0' }}>
                         <label className="form-label" style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: '0.2rem' }}>PREFERRED NAME ON CERTIFICATE *</label>
                         <input type="text" name="preferredName" className="form-input" style={{ padding: '0.6rem 1rem' }} value={formData.preferredName} onChange={handleChange} required />
@@ -468,7 +468,7 @@ function PaidRegistration() {
                       </div>
                     </div>
 
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
                       <div className="form-group" style={{ marginBottom: '0' }}>
                         <label className="form-label" style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: '0.2rem' }}>CONTACT NUMBER *</label>
                         <input type="text" name="contactNumber" className="form-input" style={{ padding: '0.6rem 1rem' }} value={formData.contactNumber} onChange={handleChange} maxLength={11} required />
@@ -483,7 +483,7 @@ function PaidRegistration() {
                       </div>
                     </div>
 
-                    <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: '1rem', marginBottom: '0' }}>
+                    <div className="grid grid-cols-1 md:grid-cols-[2fr_1fr_1fr] gap-4 mb-0">
                       <div className="form-group" style={{ marginBottom: '0' }}>
                         <label className="form-label" style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: '0.2rem' }}>NAME OF SCHOOL *</label>
                         <input type="text" name="schoolName" className="form-input" style={{ padding: '0.6rem 1rem' }} value={formData.schoolName} onChange={handleChange} required />
@@ -521,7 +521,7 @@ function PaidRegistration() {
                     {/* Registrant Info */}
                     <div style={{ background: '#f8fafc', padding: '20px', borderRadius: '12px', marginBottom: '2rem', border: '1px solid var(--brand-border)' }}>
                       <h4 style={{ color: 'var(--brand-black)', marginBottom: '0.8rem', fontSize: '1rem', fontWeight: 'bold' }}>Registrant</h4>
-                      <div style={{ display: 'grid', gridTemplateColumns: '100px 1fr', gap: '6px 12px', fontSize: '0.95rem' }}>
+                      <div className="grid grid-cols-1 sm:grid-cols-[100px_1fr] gap-1 sm:gap-x-3 sm:gap-y-1.5 text-[0.95rem]">
                         <span style={{ color: 'var(--brand-text)' }}>Name:</span>
                         <span style={{ color: 'var(--brand-black)', fontWeight: '500' }}>{formData.givenName} {formData.middleInitial ? formData.middleInitial + '.' : ''} {formData.lastName}</span>
                         <span style={{ color: 'var(--brand-text)' }}>Email:</span>
@@ -559,7 +559,7 @@ function PaidRegistration() {
               </div>
 
               {/* Navigation Actions */}
-              <div className="form-actions" style={{ display: 'flex', gap: '15px', marginTop: '2rem', paddingTop: '1.5rem', borderTop: '1px solid var(--brand-border)' }}>
+              <div className="form-actions flex flex-col sm:flex-row gap-4 mt-8 pt-6" style={{ borderTop: '1px solid var(--brand-border)' }}>
                 {currentStep > 1 && (
                   <button
                     type="button"
