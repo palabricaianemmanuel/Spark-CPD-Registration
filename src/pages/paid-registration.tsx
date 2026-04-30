@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Loader2, CheckCircle, AlertCircle, Home, Check, CreditCard, ExternalLink } from 'lucide-react';
-import { useSearchParams } from 'react-router-dom';
+import { Loader2, CheckCircle, AlertCircle, Home, Upload, Check } from 'lucide-react';
+import { supabase } from '../supabaseClient';
 
 function PaidRegistration() {
   const [currentStep, setCurrentStep] = useState(1);
@@ -18,8 +18,7 @@ function PaidRegistration() {
     division: '',
     prcId: ''
   });
-  const [searchParams] = useSearchParams();
-  const [paymentSuccess, setPaymentSuccess] = useState(false);
+  const [proofFile, setProofFile] = useState<File | null>(null);
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -44,40 +43,6 @@ function PaidRegistration() {
   useEffect(() => {
     document.title = 'SPARK CPD Paid Registration';
   }, []);
-
-  // Handle PayMongo redirect callback
-  useEffect(() => {
-    const status = searchParams.get('status');
-    if (status === 'success') {
-      setPaymentSuccess(true);
-      setSuccess(true);
-      setRegisteredName('Participant');
-      setShowIntro(false);
-
-      // Verify payment and update DB
-      const checkoutId = localStorage.getItem('paymongo_checkout_id');
-      console.log('Redirect success detected. checkoutId in localStorage:', checkoutId);
-      if (checkoutId) {
-        fetch('/api/verify-payment', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ checkout_id: checkoutId })
-        }).then((res) => {
-          console.log('Verify payment response status:', res.status);
-          return res.json();
-        }).then((data) => {
-          console.log('Verify payment data:', data);
-          localStorage.removeItem('paymongo_checkout_id');
-        }).catch(err => console.error('Payment verification failed:', err));
-      } else {
-        console.warn('No checkoutId found in localStorage on success redirect');
-      }
-    } else if (status === 'failed') {
-      setError('Payment was cancelled or failed. You can try again.');
-      setCurrentStep(4);
-      setShowIntro(false);
-    }
-  }, [searchParams]);
 
   useEffect(() => {
     if (showIntro) {
@@ -119,7 +84,26 @@ function PaidRegistration() {
     }
   };
 
-
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      const validTypes = ['image/jpeg', 'image/jpg', 'application/pdf'];
+      if (!validTypes.includes(file.type)) {
+        setError('Only PDF and JPEG files are accepted.');
+        setProofFile(null);
+        triggerShake();
+        return;
+      }
+      if (file.size > 10 * 1024 * 1024) {
+        setError('File size must not exceed 10 MB.');
+        setProofFile(null);
+        triggerShake();
+        return;
+      }
+      setError(null);
+      setProofFile(file);
+    }
+  };
 
   const triggerShake = () => {
     setShowShake(true);
@@ -142,13 +126,12 @@ function PaidRegistration() {
       division: '',
       prcId: ''
     });
-    setPaymentSuccess(false);
+    setProofFile(null);
     setHasManuallyEditedPreferredName(false);
     setSuccess(false);
     setError(null);
     setShowIntro(true);
     setIntroKey(prev => prev + 1);
-    window.history.replaceState({}, '', window.location.pathname);
   };
 
   const nextStep = () => {
@@ -185,33 +168,63 @@ function PaidRegistration() {
     setCurrentStep(prev => prev - 1);
   };
 
-  const handlePayWithGcash = async () => {
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!proofFile) {
+      setError('Please upload your proof of payment.');
+      triggerShake();
+      return;
+    }
+
     setLoading(true);
     setError(null);
 
     try {
-      const response = await fetch('/api/create-checkout', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ formData })
-      });
+      const fileExt = proofFile.name.split('.').pop();
+      const fileName = `${Date.now()}_${formData.lastName.replace(/\s+/g, '_')}_payment.${fileExt}`;
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from('payment_proofs')
+        .upload(fileName, proofFile);
 
-      const contentType = response.headers.get('content-type');
-      if (!contentType || !contentType.includes('application/json')) {
-        throw new Error('Payment API is not available. Please try again later or contact support.');
+      if (uploadError) {
+        throw new Error('Failed to upload proof of payment. ' + uploadError.message);
       }
 
-      const result = await response.json();
-      if (!response.ok) {
-        throw new Error(result.error || 'Failed to create payment session.');
+      const { data: publicUrlData } = supabase.storage
+        .from('payment_proofs')
+        .getPublicUrl(uploadData.path);
+
+      const fileUrl = publicUrlData.publicUrl;
+
+      const { error: insertError } = await supabase
+        .from('paid_registration')
+        .insert([
+          {
+            given_name: formData.givenName,
+            middle_initial: formData.middleInitial,
+            last_name: formData.lastName,
+            preferred_name: formData.preferredName,
+            email: formData.email,
+            contact_number: formData.contactNumber,
+            position: formData.position,
+            school_name: formData.schoolName,
+            region: formData.region,
+            division: formData.division,
+            prc_id: formData.prcId,
+            proof_of_payment_url: fileUrl
+          }
+        ]);
+
+      if (insertError) {
+        throw insertError;
       }
 
-      // Save checkout ID for verification after redirect, then redirect
-      localStorage.setItem('paymongo_checkout_id', result.checkout_id);
-      window.location.href = result.checkout_url;
+      setRegisteredName(formData.givenName);
+      setSuccess(true);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     } catch (err: any) {
-      console.error('Payment initiation failed:', err);
-      setError(err.message || 'Failed to start payment. Please try again.');
+      console.error('Registration failed:', err);
+      setError(err.message || 'An error occurred. Please try again.');
       triggerShake();
     } finally {
       setLoading(false);
@@ -284,12 +297,10 @@ function PaidRegistration() {
                 <CheckCircle className="success-icon-animated" size={80} color="var(--brand-orange)" />
               </div>
               <h2 className="success-title-personalized" style={{ fontSize: '2rem', marginBottom: '1rem', color: 'var(--brand-black)' }}>
-                {paymentSuccess ? 'Payment Confirmed!' : `Thanks, ${registeredName}!`}
+                Thanks, {registeredName}!
               </h2>
               <p className="success-text-celebratory" style={{ fontSize: '1.1rem', maxWidth: '500px', margin: '0 auto 2rem auto', lineHeight: '1.6', color: 'var(--brand-text)' }}>
-                {paymentSuccess
-                  ? 'Your payment has been received and verified automatically. You will receive a confirmation email with your program details shortly.'
-                  : 'Your registration has been submitted. We will send you a confirmation email shortly.'}
+                Your registration and payment proof have been successfully submitted. We will review your payment and send you a confirmation email shortly.
               </p>
               <div className="success-actions" style={{ justifyContent: 'center' }}>
                 <button onClick={handleReset} className="submit-btn" style={{ width: 'auto', padding: '0.875rem 2rem' }}>
@@ -374,7 +385,7 @@ function PaidRegistration() {
 
 
                     <div style={{ background: '#f8fafc', padding: '20px', borderRadius: '12px', marginBottom: '1.5rem', border: '1px solid var(--brand-border)' }}>
-                      <div className="grid grid-cols-1 sm:grid-cols-[100px_1fr] gap-2.5">
+                      <div style={{ display: 'grid', gridTemplateColumns: '100px 1fr', gap: '10px' }}>
                         <strong style={{ color: 'var(--brand-black)' }}>WHAT:</strong> <span>Financial Literacy</span>
                         <strong style={{ color: 'var(--brand-black)' }}>WHEN:</strong> <span>May 29 to 31, 2026</span>
                         <strong style={{ color: 'var(--brand-black)' }}>WHERE:</strong> <span>Zoom Online Meeting</span>
@@ -442,7 +453,7 @@ function PaidRegistration() {
                   <div className="step-3 fade-in">
                     <h3 style={{ color: 'var(--brand-black-deep)', marginBottom: '1.5rem', fontSize: '1.3rem', fontWeight: 'bold' }}>Personal Details</h3>
 
-                    <div className="grid grid-cols-1 md:grid-cols-[2fr_1fr_2fr] gap-4 mb-4">
+                    <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 2fr', gap: '1rem', marginBottom: '1rem' }}>
                       <div className="form-group" style={{ marginBottom: '0' }}>
                         <label className="form-label" style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: '0.2rem' }}>GIVEN NAME *</label>
                         <input type="text" name="givenName" className="form-input" style={{ padding: '0.6rem 1rem' }} value={formData.givenName} onChange={handleChange} required />
@@ -457,7 +468,7 @@ function PaidRegistration() {
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
                       <div className="form-group" style={{ marginBottom: '0' }}>
                         <label className="form-label" style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: '0.2rem' }}>PREFERRED NAME ON CERTIFICATE *</label>
                         <input type="text" name="preferredName" className="form-input" style={{ padding: '0.6rem 1rem' }} value={formData.preferredName} onChange={handleChange} required />
@@ -468,7 +479,7 @@ function PaidRegistration() {
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
                       <div className="form-group" style={{ marginBottom: '0' }}>
                         <label className="form-label" style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: '0.2rem' }}>CONTACT NUMBER *</label>
                         <input type="text" name="contactNumber" className="form-input" style={{ padding: '0.6rem 1rem' }} value={formData.contactNumber} onChange={handleChange} maxLength={11} required />
@@ -483,7 +494,7 @@ function PaidRegistration() {
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-[2fr_1fr_1fr] gap-4 mb-0">
+                    <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: '1rem', marginBottom: '0' }}>
                       <div className="form-group" style={{ marginBottom: '0' }}>
                         <label className="form-label" style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: '0.2rem' }}>NAME OF SCHOOL *</label>
                         <input type="text" name="schoolName" className="form-input" style={{ padding: '0.6rem 1rem' }} value={formData.schoolName} onChange={handleChange} required />
@@ -502,64 +513,86 @@ function PaidRegistration() {
 
                 {currentStep === 4 && (
                   <div className="step-4 fade-in" style={{ color: 'var(--brand-text)' }}>
-                    <h3 style={{ color: 'var(--brand-black-deep)', marginBottom: '2rem', fontSize: '1.4rem', fontWeight: 'bold' }}>Payment</h3>
+                    <h3 style={{ color: 'var(--brand-black-deep)', marginBottom: '2rem', fontSize: '1.4rem', fontWeight: 'bold' }}>Payment Process</h3>
 
-                    {/* Order Summary */}
-                    <div style={{ background: 'rgba(255, 94, 0, 0.05)', border: '1px solid rgba(255, 94, 0, 0.2)', padding: '24px', borderRadius: '12px', marginBottom: '2rem' }}>
-                      <h4 style={{ color: 'var(--brand-black)', marginBottom: '1rem', fontSize: '1.05rem', fontWeight: 'bold' }}>Order Summary</h4>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-                        <span style={{ color: 'var(--brand-text)' }}>SPARK CPD — Financial Literacy</span>
-                        <span style={{ color: 'var(--brand-black)', fontWeight: '500' }}>₱300.00</span>
-                      </div>
-                      <div style={{ height: '1px', background: 'rgba(255, 94, 0, 0.2)', margin: '12px 0' }} />
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <span style={{ color: 'var(--brand-black)', fontWeight: 'bold', fontSize: '1.1rem' }}>Total</span>
-                        <span style={{ color: 'var(--brand-orange)', fontWeight: 'bold', fontSize: '1.4rem' }}>₱300.00</span>
-                      </div>
-                    </div>
-
-                    {/* Registrant Info */}
-                    <div style={{ background: '#f8fafc', padding: '20px', borderRadius: '12px', marginBottom: '2rem', border: '1px solid var(--brand-border)' }}>
-                      <h4 style={{ color: 'var(--brand-black)', marginBottom: '0.8rem', fontSize: '1rem', fontWeight: 'bold' }}>Registrant</h4>
-                      <div className="grid grid-cols-1 sm:grid-cols-[100px_1fr] gap-1 sm:gap-x-3 sm:gap-y-1.5 text-[0.95rem]">
-                        <span style={{ color: 'var(--brand-text)' }}>Name:</span>
-                        <span style={{ color: 'var(--brand-black)', fontWeight: '500' }}>{formData.givenName} {formData.middleInitial ? formData.middleInitial + '.' : ''} {formData.lastName}</span>
-                        <span style={{ color: 'var(--brand-text)' }}>Email:</span>
-                        <span style={{ color: 'var(--brand-black)', fontWeight: '500' }}>{formData.email}</span>
-                        <span style={{ color: 'var(--brand-text)' }}>School:</span>
-                        <span style={{ color: 'var(--brand-black)', fontWeight: '500' }}>{formData.schoolName}</span>
-                      </div>
-                    </div>
-
-                    {/* GCash Payment Info */}
-                    <div style={{ background: '#f8fafc', padding: '20px', borderRadius: '12px', marginBottom: '2rem', border: '1px solid var(--brand-border)' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
-                        <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: '#007DFE', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                          <CreditCard size={20} color="#fff" />
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem' }}>
+                      {/* Left Column: QR and Info */}
+                      <div>
+                        <div style={{ marginBottom: '1.5rem' }}>
+                          <h4 style={{ color: 'var(--brand-black)', marginBottom: '0.8rem', fontSize: '1.1rem', fontWeight: 'bold' }}>STEP 1: Scan GCash QR</h4>
+                          <p style={{ fontSize: '0.9rem', marginBottom: '1rem' }}>(Note: We only accept GCash Payment for now)</p>
+                          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', background: '#f8fafc', padding: '20px', borderRadius: '12px', border: '1px solid var(--brand-border)' }}>
+                            <img src="/zoomed-gcash-qr.png" alt="GCash QR Code" style={{ width: '180px', height: '180px', objectFit: 'contain', background: '#fff', padding: '10px', borderRadius: '12px', marginBottom: '15px', border: '1px dashed #ccc' }} />
+                            <p style={{ color: 'var(--brand-black)', fontWeight: 'bold', fontSize: '1.1rem' }}>Regina Schelle Palabrica</p>
+                            <p style={{ fontSize: '1.2rem', letterSpacing: '1px', marginTop: '5px' }}>0915 671 4332</p>
+                          </div>
                         </div>
-                        <div>
-                          <p style={{ color: 'var(--brand-black)', fontWeight: 'bold', fontSize: '1rem', margin: 0 }}>Pay with GCash</p>
-                          <p style={{ color: 'var(--brand-text)', fontSize: '0.85rem', margin: 0 }}>Secure payment via PayMongo</p>
+
+                        <div style={{ background: '#f8fafc', border: '1px solid var(--brand-border)', padding: '15px', borderRadius: '12px' }}>
+                          <p style={{ color: 'var(--brand-black)', fontWeight: 'bold', marginBottom: '5px' }}>Questions or concerns?</p>
+                          <p>Nanelyn Bontoyan, PhD</p>
+                          <p style={{ fontSize: '0.85rem' }}>CPD Programs Lead</p>
+                          <a href="mailto:nanelyn.bontoyan@gmail.com" style={{ color: 'var(--brand-orange)', textDecoration: 'none', fontSize: '0.9rem', fontWeight: '500' }}>nanelyn.bontoyan@gmail.com</a>
                         </div>
                       </div>
-                      <p style={{ fontSize: '0.85rem', color: 'var(--brand-text)', lineHeight: '1.6' }}>
-                        Clicking the button below will redirect you to a secure PayMongo checkout page where you can complete your payment via GCash. You will be redirected back here after payment.
-                      </p>
-                    </div>
 
-                    {/* Contact Info */}
-                    <div style={{ background: '#f8fafc', border: '1px solid var(--brand-border)', padding: '15px', borderRadius: '12px' }}>
-                      <p style={{ color: 'var(--brand-black)', fontWeight: 'bold', marginBottom: '5px' }}>Questions or concerns?</p>
-                      <p>Nanelyn Bontoyan, PhD</p>
-                      <p style={{ fontSize: '0.85rem' }}>CPD Programs Lead</p>
-                      <a href="mailto:nanelyn.bontoyan@gmail.com" style={{ color: 'var(--brand-orange)', textDecoration: 'none', fontSize: '0.9rem', fontWeight: '500' }}>nanelyn.bontoyan@gmail.com</a>
+                      {/* Right Column: Upload */}
+                      <div>
+                        <h4 style={{ color: 'var(--brand-black)', marginBottom: '0.8rem', fontSize: '1.1rem', fontWeight: 'bold' }}>STEP 2: Upload Proof</h4>
+
+                        <div style={{ background: 'rgba(255, 94, 0, 0.05)', border: '1px solid rgba(255, 94, 0, 0.2)', padding: '15px', borderRadius: '12px', marginBottom: '1.5rem' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <span style={{ color: 'var(--brand-black)', fontWeight: '500' }}>Total Due</span>
+                            <span style={{ color: 'var(--brand-orange)', fontWeight: 'bold', fontSize: '1.2rem' }}>Php 300.00</span>
+                          </div>
+                        </div>
+
+                        <div style={{ fontSize: '0.85rem', marginBottom: '15px', background: '#f8fafc', padding: '15px', borderRadius: '12px', border: '1px solid var(--brand-border)' }}>
+                          <p style={{ color: 'var(--brand-black)', fontWeight: 'bold', marginBottom: '8px' }}>Important Notes:</p>
+                          <ul style={{ paddingLeft: '20px', margin: 0, display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                            <li>Only PDF and JPEG files are accepted</li>
+                            <li>Ensure Amount and Reference Number are clearly visible</li>
+                            <li>Rename file: <strong>&lt;Your Name - School - CPD Payment&gt;</strong></li>
+                          </ul>
+                        </div>
+
+                        <label className="upload-container" style={{
+                          display: 'flex',
+                          flexDirection: 'column',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          padding: '2.5rem 1rem',
+                          border: proofFile ? '2px solid var(--brand-orange)' : '2px dashed #cbd5e1',
+                          borderRadius: '12px',
+                          cursor: 'pointer',
+                          transition: 'all 0.3s ease',
+                          background: proofFile ? 'rgba(255, 94, 0, 0.05)' : '#f8fafc'
+                        }}>
+                          {proofFile ? (
+                            <>
+                              <CheckCircle size={40} style={{ color: 'var(--brand-orange)', marginBottom: '15px' }} />
+                              <span style={{ color: 'var(--brand-black)', fontWeight: '500', textAlign: 'center', wordBreak: 'break-all' }}>{proofFile.name}</span>
+                              <span style={{ fontSize: '0.8rem', marginTop: '10px', color: 'var(--brand-text)' }}>Click to change file</span>
+                            </>
+                          ) : (
+                            <>
+                              <div style={{ width: '60px', height: '60px', borderRadius: '50%', background: 'rgba(255, 94, 0, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '15px' }}>
+                                <Upload size={28} style={{ color: 'var(--brand-orange)' }} />
+                              </div>
+                              <span style={{ color: 'var(--brand-black)', fontWeight: '500', fontSize: '1.1rem' }}>Upload Receipt</span>
+                              <span style={{ fontSize: '0.85rem', marginTop: '8px' }}>PDF or JPEG (Max. 10MB)</span>
+                            </>
+                          )}
+                          <input type="file" accept=".pdf, .jpg, .jpeg, image/jpeg" onChange={handleFileChange} style={{ display: 'none' }} />
+                        </label>
+                      </div>
                     </div>
                   </div>
                 )}
               </div>
 
               {/* Navigation Actions */}
-              <div className="form-actions flex flex-col sm:flex-row gap-4 mt-8 pt-6" style={{ borderTop: '1px solid var(--brand-border)' }}>
+              <div className="form-actions" style={{ display: 'flex', gap: '15px', marginTop: '2rem', paddingTop: '1.5rem', borderTop: '1px solid var(--brand-border)' }}>
                 {currentStep > 1 && (
                   <button
                     type="button"
@@ -583,22 +616,18 @@ function PaidRegistration() {
                 ) : (
                   <button
                     type="button"
-                    onClick={handlePayWithGcash}
+                    onClick={handleSubmit}
                     className="submit-btn"
-                    style={{ flex: 2, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
+                    style={{ flex: 2 }}
                     disabled={loading}
                   >
                     {loading ? (
                       <>
                         <Loader2 className="spinner" size={20} />
-                        <span>Redirecting to GCash...</span>
+                        <span>Processing...</span>
                       </>
                     ) : (
-                      <>
-                        <CreditCard size={20} />
-                        <span>Pay ₱300 with GCash</span>
-                        <ExternalLink size={14} />
-                      </>
+                      'Submit Registration'
                     )}
                   </button>
                 )}
