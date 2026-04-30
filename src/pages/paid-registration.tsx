@@ -2,6 +2,26 @@ import React, { useState, useEffect } from 'react';
 import { Loader2, CheckCircle, AlertCircle, Home, Upload, Check } from 'lucide-react';
 import { supabase } from '../supabaseClient';
 
+const PH_REGIONS: Record<string, string[]> = {
+  "Region I (Ilocos Region)": ["Ilocos Norte", "Ilocos Sur", "La Union", "Pangasinan", "Alaminos City", "Batac City", "Candon City", "Dagupan City", "Laoag City", "San Carlos City", "San Fernando City", "Urdaneta City", "Vigan City"],
+  "Region II (Cagayan Valley)": ["Batanes", "Cagayan", "Isabela", "Nueva Vizcaya", "Quirino", "Cauayan City", "Ilagan City", "Santiago City", "Tuguegarao City"],
+  "Region III (Central Luzon)": ["Aurora", "Bataan", "Bulacan", "Nueva Ecija", "Pampanga", "Tarlac", "Zambales", "Angeles City", "Balanga City", "Cabanatuan City", "Gapan City", "Mabalacat City", "Malolos City", "Meycauayan City", "Olongapo City", "San Fernando City", "San Jose City", "San Jose del Monte City", "Science City of Muñoz", "Tarlac City"],
+  "Region IV-A (CALABARZON)": ["Batangas", "Cavite", "Laguna", "Quezon", "Rizal", "Antipolo City", "Bacoor City", "Batangas City", "Biñan City", "Cabuyao City", "Calamba City", "Cavite City", "Dasmariñas City", "General Trias City", "Imus City", "Lipa City", "Lucena City", "San Pablo City", "Santa Rosa City", "Santo Tomas City", "Tanauan City", "Tayabas City"],
+  "Region IV-B (MIMAROPA)": ["Marinduque", "Occidental Mindoro", "Oriental Mindoro", "Palawan", "Romblon", "Calapan City", "Puerto Princesa City"],
+  "Region V (Bicol Region)": ["Albay", "Camarines Norte", "Camarines Sur", "Catanduanes", "Masbate", "Sorsogon", "Iriga City", "Legazpi City", "Ligao City", "Masbate City", "Naga City", "Sorsogon City", "Tabaco City"],
+  "Region VI (Western Visayas)": ["Aklan", "Antique", "Capiz", "Guimaras", "Iloilo", "Negros Occidental", "Bacolod City", "Bago City", "Cadiz City", "Escalante City", "Himamaylan City", "Iloilo City", "Kabankalan City", "La Carlota City", "Passi City", "Roxas City", "Sagay City", "San Carlos City", "Silay City", "Sipalay City", "Victorias City"],
+  "Region VII (Central Visayas)": ["Bohol", "Cebu", "Negros Oriental", "Siquijor", "Bais City", "Bayawan City", "Bogo City", "Canlaon City", "Carcar City", "Cebu City", "Danao City", "Dumaguete City", "Guihulngan City", "Lapu-Lapu City", "Mandaue City", "Naga City", "Tagbilaran City", "Talisay City", "Tanjay City", "Toledo City"],
+  "Region VIII (Eastern Visayas)": ["Biliran", "Eastern Samar", "Leyte", "Northern Samar", "Samar", "Southern Leyte", "Baybay City", "Borongan City", "Calbayog City", "Catbalogan City", "Maasin City", "Ormoc City", "Tacloban City"],
+  "Region IX (Zamboanga Peninsula)": ["Zamboanga del Norte", "Zamboanga del Sur", "Zamboanga Sibugay", "Dapitan City", "Dipolog City", "Isabela City", "Pagadian City", "Zamboanga City"],
+  "Region X (Northern Mindanao)": ["Bukidnon", "Camiguin", "Lanao del Norte", "Misamis Occidental", "Misamis Oriental", "Cagayan de Oro City", "El Salvador City", "Gingoog City", "Iligan City", "Malaybalay City", "Oroquieta City", "Ozamiz City", "Tangub City", "Valencia City"],
+  "Region XI (Davao Region)": ["Davao de Oro", "Davao del Norte", "Davao del Sur", "Davao Occidental", "Davao Oriental", "Davao City", "Digos City", "Mati City", "Panabo City", "Island Garden City of Samal", "Tagum City"],
+  "Region XII (SOCCSKSARGEN)": ["Cotabato", "Sarangani", "South Cotabato", "Sultan Kudarat", "Kidapawan City", "Koronadal City", "General Santos City", "Tacurong City"],
+  "Region XIII (Caraga)": ["Agusan del Norte", "Agusan del Sur", "Dinagat Islands", "Surigao del Norte", "Surigao del Sur", "Bayugan City", "Bislig City", "Butuan City", "Cabadbaran City", "Surigao City", "Tandag City"],
+  "NCR (National Capital Region)": ["Caloocan City", "Las Piñas City", "Makati City", "Malabon City", "Mandaluyong City", "Manila", "Marikina City", "Muntinlupa City", "Navotas City", "Parañaque City", "Pasay City", "Pasig City", "Quezon City", "San Juan City", "Taguig City", "Valenzuela City"],
+  "CAR (Cordillera Administrative Region)": ["Abra", "Apayao", "Benguet", "Ifugao", "Kalinga", "Mountain Province", "Baguio City", "Tabuk City"],
+  "BARMM (Bangsamoro Autonomous Region in Muslim Mindanao)": ["Basilan", "Lanao del Sur", "Maguindanao del Norte", "Maguindanao del Sur", "Sulu", "Tawi-Tawi", "Cotabato City", "Marawi City"]
+};
+
 function PaidRegistration() {
   const [currentStep, setCurrentStep] = useState(1);
   const [consent, setConsent] = useState<'agree' | 'disagree' | null>(null);
@@ -74,6 +94,11 @@ function PaidRegistration() {
       if (!hasManuallyEditedPreferredName && (name === 'givenName' || name === 'middleInitial' || name === 'lastName')) {
         const mi = next.middleInitial ? ` ${next.middleInitial}.` : '';
         next.preferredName = `${next.givenName}${mi} ${next.lastName}`.trim().replace(/\s+/g, ' ');
+      }
+
+      // Clear division if region changes
+      if (name === 'region') {
+        next.division = '';
       }
 
       return next;
@@ -153,6 +178,12 @@ function PaidRegistration() {
       const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
       if (!emailRegex.test(email)) {
         setError('Please enter a valid email address.');
+        triggerShake();
+        return;
+      }
+
+      if (contactNumber.length !== 11) {
+        setError('Contact number must be exactly 11 digits.');
         triggerShake();
         return;
       }
@@ -385,7 +416,7 @@ function PaidRegistration() {
 
 
                     <div style={{ background: '#f8fafc', padding: '20px', borderRadius: '12px', marginBottom: '1.5rem', border: '1px solid var(--brand-border)' }}>
-                      <div style={{ display: 'grid', gridTemplateColumns: '100px 1fr', gap: '10px' }}>
+                      <div className="grid grid-cols-1 sm:grid-cols-[100px_1fr] gap-2.5">
                         <strong style={{ color: 'var(--brand-black)' }}>WHAT:</strong> <span>Financial Literacy</span>
                         <strong style={{ color: 'var(--brand-black)' }}>WHEN:</strong> <span>May 29 to 31, 2026</span>
                         <strong style={{ color: 'var(--brand-black)' }}>WHERE:</strong> <span>Zoom Online Meeting</span>
@@ -453,7 +484,7 @@ function PaidRegistration() {
                   <div className="step-3 fade-in">
                     <h3 style={{ color: 'var(--brand-black-deep)', marginBottom: '1.5rem', fontSize: '1.3rem', fontWeight: 'bold' }}>Personal Details</h3>
 
-                    <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 2fr', gap: '1rem', marginBottom: '1rem' }}>
+                    <div className="grid grid-cols-1 md:grid-cols-[2fr_1fr_2fr] gap-4 mb-4">
                       <div className="form-group" style={{ marginBottom: '0' }}>
                         <label className="form-label" style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: '0.2rem' }}>GIVEN NAME *</label>
                         <input type="text" name="givenName" className="form-input" style={{ padding: '0.6rem 1rem' }} value={formData.givenName} onChange={handleChange} required />
@@ -468,21 +499,21 @@ function PaidRegistration() {
                       </div>
                     </div>
 
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                       <div className="form-group" style={{ marginBottom: '0' }}>
                         <label className="form-label" style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: '0.2rem' }}>PREFERRED NAME ON CERTIFICATE *</label>
                         <input type="text" name="preferredName" className="form-input" style={{ padding: '0.6rem 1rem' }} value={formData.preferredName} onChange={handleChange} required />
                       </div>
                       <div className="form-group" style={{ marginBottom: '0' }}>
                         <label className="form-label" style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: '0.2rem' }}>PERSONAL EMAIL *</label>
-                        <input type="email" name="email" className="form-input" style={{ padding: '0.6rem 1rem' }} value={formData.email} onChange={handleChange} required />
+                        <input type="email" name="email" className="form-input" style={{ padding: '0.6rem 1rem' }} value={formData.email} onChange={handleChange} placeholder="example@email.com" required />
                       </div>
                     </div>
 
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
                       <div className="form-group" style={{ marginBottom: '0' }}>
                         <label className="form-label" style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: '0.2rem' }}>CONTACT NUMBER *</label>
-                        <input type="text" name="contactNumber" className="form-input" style={{ padding: '0.6rem 1rem' }} value={formData.contactNumber} onChange={handleChange} maxLength={11} required />
+                        <input type="text" name="contactNumber" className="form-input" style={{ padding: '0.6rem 1rem' }} value={formData.contactNumber} onChange={handleChange} maxLength={11} placeholder="09123456789" required />
                       </div>
                       <div className="form-group" style={{ marginBottom: '0' }}>
                         <label className="form-label" style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: '0.2rem' }}>POSITION *</label>
@@ -494,18 +525,28 @@ function PaidRegistration() {
                       </div>
                     </div>
 
-                    <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: '1rem', marginBottom: '0' }}>
+                    <div className="grid grid-cols-1 md:grid-cols-[2fr_1fr_1fr] gap-4 mb-0">
                       <div className="form-group" style={{ marginBottom: '0' }}>
                         <label className="form-label" style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: '0.2rem' }}>NAME OF SCHOOL *</label>
                         <input type="text" name="schoolName" className="form-input" style={{ padding: '0.6rem 1rem' }} value={formData.schoolName} onChange={handleChange} required />
                       </div>
                       <div className="form-group" style={{ marginBottom: '0' }}>
                         <label className="form-label" style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: '0.2rem' }}>REGION *</label>
-                        <input type="text" name="region" className="form-input" style={{ padding: '0.6rem 1rem' }} value={formData.region} onChange={handleChange} required />
+                        <select name="region" className="form-input" style={{ padding: '0.6rem 1rem', appearance: 'auto', backgroundColor: '#fff' }} value={formData.region} onChange={handleChange as any} required>
+                          <option value="">Select Region</option>
+                          {Object.keys(PH_REGIONS).map(reg => (
+                            <option key={reg} value={reg}>{reg}</option>
+                          ))}
+                        </select>
                       </div>
                       <div className="form-group" style={{ marginBottom: '0' }}>
                         <label className="form-label" style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: '0.2rem' }}>DIVISION *</label>
-                        <input type="text" name="division" className="form-input" style={{ padding: '0.6rem 1rem' }} value={formData.division} onChange={handleChange} required />
+                        <select name="division" className="form-input" style={{ padding: '0.6rem 1rem', appearance: 'auto', backgroundColor: '#fff' }} value={formData.division} onChange={handleChange as any} disabled={!formData.region} required>
+                          <option value="">Select Division</option>
+                          {formData.region && PH_REGIONS[formData.region]?.map(div => (
+                            <option key={div} value={div}>{div}</option>
+                          ))}
+                        </select>
                       </div>
                     </div>
                   </div>
@@ -515,7 +556,7 @@ function PaidRegistration() {
                   <div className="step-4 fade-in" style={{ color: 'var(--brand-text)' }}>
                     <h3 style={{ color: 'var(--brand-black-deep)', marginBottom: '2rem', fontSize: '1.4rem', fontWeight: 'bold' }}>Payment Process</h3>
 
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem' }}>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                       {/* Left Column: QR and Info */}
                       <div>
                         <div style={{ marginBottom: '1.5rem' }}>
@@ -592,7 +633,7 @@ function PaidRegistration() {
               </div>
 
               {/* Navigation Actions */}
-              <div className="form-actions" style={{ display: 'flex', gap: '15px', marginTop: '2rem', paddingTop: '1.5rem', borderTop: '1px solid var(--brand-border)' }}>
+              <div className="form-actions flex flex-col sm:flex-row gap-4 mt-8 pt-6 border-t" style={{ borderColor: 'var(--brand-border)' }}>
                 {currentStep > 1 && (
                   <button
                     type="button"
