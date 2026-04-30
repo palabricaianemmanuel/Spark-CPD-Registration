@@ -34,19 +34,36 @@ interface CustomSelectProps {
 
 const CustomSelect: React.FC<CustomSelectProps> = ({ options, value, onChange, placeholder, disabled, errorGlow, onDisabledClick }) => {
   const [isOpen, setIsOpen] = useState(false);
+  const [inputValue, setInputValue] = useState(value);
+
+  // Sync local input state with external value changes
+  useEffect(() => {
+    setInputValue(value);
+  }, [value]);
 
   const handleToggle = () => {
     if (disabled) {
       if (onDisabledClick) onDisabledClick();
       return;
     }
-    setIsOpen(!isOpen);
+    setIsOpen(true);
+  };
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setInputValue(e.target.value);
+    setIsOpen(true);
+    onChange(e.target.value); // Let parent know of partial changes too
   };
 
   const handleSelect = (option: string) => {
+    setInputValue(option);
     onChange(option);
     setIsOpen(false);
   };
+
+  const filteredOptions = options.filter(opt => 
+    opt.toLowerCase().includes(inputValue.toLowerCase())
+  );
 
   return (
     <div className="relative w-full" style={{ zIndex: isOpen ? 50 : 1 }}>
@@ -58,20 +75,29 @@ const CustomSelect: React.FC<CustomSelectProps> = ({ options, value, onChange, p
       )}
       
       <div 
-        className={`form-input flex justify-between items-center cursor-pointer transition-all duration-300 relative z-50
-          ${disabled ? 'opacity-60 cursor-not-allowed bg-slate-50' : 'bg-white'}
+        className={`form-input flex justify-between items-center transition-all duration-300 relative z-50
+          ${disabled ? 'opacity-60 cursor-not-allowed bg-slate-50' : 'bg-white cursor-text'}
           ${errorGlow ? 'shadow-[0_0_15px_rgba(255,94,0,0.4)] border-[var(--brand-orange)] ring-1 ring-[var(--brand-orange)]' : ''}
           ${isOpen ? 'border-[var(--brand-orange)] ring-1 ring-[var(--brand-orange)]' : 'border-[var(--brand-border)]'}
         `}
         style={{ padding: '0.6rem 1rem', minHeight: '42px', borderRadius: '8px' }}
         onClick={handleToggle}
       >
-        <span className={value ? 'text-[var(--brand-black)]' : 'text-gray-400'} style={{ fontSize: '0.95rem' }}>
-          {value || placeholder}
-        </span>
+        <input 
+          type="text"
+          className={`w-full bg-transparent border-none outline-none text-[0.95rem] ${disabled ? 'cursor-not-allowed text-gray-400' : 'cursor-text text-[var(--brand-black)]'}`}
+          placeholder={placeholder}
+          value={inputValue}
+          onChange={handleInputChange}
+          disabled={disabled}
+        />
         <ChevronDown 
           size={18} 
-          className={`transition-transform duration-300 ${isOpen ? 'rotate-180 text-[var(--brand-orange)]' : 'text-gray-400'}`} 
+          className={`transition-transform duration-300 cursor-pointer flex-shrink-0 ml-2 ${isOpen ? 'rotate-180 text-[var(--brand-orange)]' : 'text-gray-400'}`} 
+          onClick={(e) => {
+            e.stopPropagation();
+            if (!disabled) setIsOpen(!isOpen);
+          }}
         />
       </div>
 
@@ -81,7 +107,7 @@ const CustomSelect: React.FC<CustomSelectProps> = ({ options, value, onChange, p
         `}
       >
         <div className="max-h-60 overflow-y-auto py-1">
-          {options.length > 0 ? options.map((opt) => (
+          {filteredOptions.length > 0 ? filteredOptions.map((opt) => (
             <div
               key={opt}
               className={`px-4 py-2.5 cursor-pointer transition-colors duration-200 text-sm
@@ -92,7 +118,7 @@ const CustomSelect: React.FC<CustomSelectProps> = ({ options, value, onChange, p
               {opt}
             </div>
           )) : (
-            <div className="px-4 py-3 text-sm text-gray-500 italic">No options available</div>
+            <div className="px-4 py-3 text-sm text-gray-500 italic">No matches found</div>
           )}
         </div>
       </div>
