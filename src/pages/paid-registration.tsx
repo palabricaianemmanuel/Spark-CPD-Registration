@@ -61,8 +61,8 @@ const CustomSelect: React.FC<CustomSelectProps> = ({ options, value, onChange, p
     setIsOpen(false);
   };
 
-  const filteredOptions = options.filter(opt => 
-    opt.toLowerCase().includes(inputValue.toLowerCase())
+  const filteredOptions = (options || []).filter(opt => 
+    opt.toLowerCase().includes((inputValue || '').toLowerCase())
   );
 
   return (
