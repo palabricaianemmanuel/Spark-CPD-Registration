@@ -53,7 +53,11 @@ interface PaidRegistration {
   region: string;
   division: string;
   prc_id: string;
-  proof_of_payment_url: string;
+  proof_of_payment_url?: string;
+  payment_status?: string;
+  paymongo_checkout_id?: string;
+  paymongo_payment_id?: string;
+  paid_at?: string;
 }
 
 type SortField = 'created_at' | 'first_name' | 'last_name' | 'email';
@@ -1005,7 +1009,7 @@ function Admin() {
                   <th>Position</th>
                   <th>School</th>
                   <th>PRC ID</th>
-                  <th>Payment Proof</th>
+                  <th>Payment Status</th>
                   <th>Date</th>
                 </tr>
               </thead>
@@ -1039,29 +1043,60 @@ function Admin() {
                       <td>{r.school_name}</td>
                       <td>{r.prc_id}</td>
                       <td>
-                        <button
-                          onClick={() => setProofModalUrl(r.proof_of_payment_url)}
-                          style={{
+                        {r.payment_status === 'paid' ? (
+                          <span style={{
                             display: 'inline-flex',
                             alignItems: 'center',
-                            justifyContent: 'center',
-                            gap: '6px',
-                            padding: '0.4rem 0.8rem',
-                            height: '36px',
-                            borderRadius: '8px',
-                            border: 'none',
-                            background: 'var(--brand-orange)',
-                            color: '#fff',
-                            cursor: 'pointer',
+                            gap: '4px',
+                            padding: '4px 12px',
+                            borderRadius: '20px',
+                            background: 'rgba(34, 197, 94, 0.1)',
+                            color: '#16a34a',
                             fontSize: '0.8rem',
-                            fontWeight: '600',
-                            transition: 'all 0.2s ease',
-                          }}
-                          title="View Payment Proof"
-                        >
-                          <Eye size={16} />
-                          View
-                        </button>
+                            fontWeight: '600'
+                          }}>
+                            <CheckCircle2 size={14} />
+                            Paid
+                          </span>
+                        ) : r.proof_of_payment_url ? (
+                          <button
+                            onClick={() => setProofModalUrl(r.proof_of_payment_url!)}
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              gap: '6px',
+                              padding: '0.4rem 0.8rem',
+                              height: '36px',
+                              borderRadius: '8px',
+                              border: 'none',
+                              background: 'var(--brand-orange)',
+                              color: '#fff',
+                              cursor: 'pointer',
+                              fontSize: '0.8rem',
+                              fontWeight: '600',
+                              transition: 'all 0.2s ease',
+                            }}
+                            title="View Payment Proof"
+                          >
+                            <Eye size={16} />
+                            Proof
+                          </button>
+                        ) : (
+                          <span style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                            padding: '4px 12px',
+                            borderRadius: '20px',
+                            background: 'rgba(234, 179, 8, 0.1)',
+                            color: '#ca8a04',
+                            fontSize: '0.8rem',
+                            fontWeight: '600'
+                          }}>
+                            Pending
+                          </span>
+                        )}
                       </td>
                       <td className="admin-td-date">
                         {new Date(r.created_at).toLocaleDateString('en-PH', {
