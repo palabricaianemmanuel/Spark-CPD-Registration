@@ -226,9 +226,9 @@ function PaidRegistration() {
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
-      const validTypes = ['image/jpeg', 'image/jpg', 'application/pdf'];
+      const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'application/pdf'];
       if (!validTypes.includes(file.type)) {
-        setError('Only PDF and JPEG files are accepted.');
+        setError('Only JPG, JPEG, PNG  & PDF files are accepted.');
         setProofFile(null);
         triggerShake();
         return;
@@ -708,7 +708,7 @@ function PaidRegistration() {
                         <div style={{ fontSize: '0.85rem', marginBottom: '15px', background: '#f8fafc', padding: '15px', borderRadius: '12px', border: '1px solid var(--brand-border)' }}>
                           <p style={{ color: 'var(--brand-black)', fontWeight: 'bold', marginBottom: '8px' }}>Important Notes:</p>
                           <ul style={{ paddingLeft: '20px', margin: 0, display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                            <li>Only PDF and JPEG files are accepted</li>
+                            <li>Only JPG, JPEG, PNG, & PDF files are accepted</li>
                             <li>Ensure Amount and Reference Number are clearly visible</li>
                             <li>Rename file: <strong>&lt;Your Name - School - CPD Payment&gt;</strong></li>
                           </ul>
@@ -738,10 +738,10 @@ function PaidRegistration() {
                                 <Upload size={28} style={{ color: 'var(--brand-orange)' }} />
                               </div>
                               <span style={{ color: 'var(--brand-black)', fontWeight: '500', fontSize: '1.1rem' }}>Upload Receipt</span>
-                              <span style={{ fontSize: '0.85rem', marginTop: '8px' }}>PDF or JPEG (Max. 10MB)</span>
+                              <span style={{ fontSize: '0.85rem', marginTop: '8px' }}>JPG, JPEG, PNG or PDF (Max. 10MB)</span>
                             </>
                           )}
-                          <input type="file" accept=".pdf, .jpg, .jpeg, image/jpeg" onChange={handleFileChange} style={{ display: 'none' }} />
+                          <input type="file" accept=".pdf, .jpg, .jpeg, .png, image/png, image/jpeg" onChange={handleFileChange} style={{ display: 'none' }} />
                         </label>
                       </div>
                     </div>
