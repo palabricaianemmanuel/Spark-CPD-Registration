@@ -534,7 +534,7 @@ function PaidRegistration() {
                         <strong style={{ color: 'var(--brand-black)' }}>WHAT:</strong> <span>Financial Literacy</span>
                         <strong style={{ color: 'var(--brand-black)' }}>WHEN:</strong> <span>May 29 to 31, 2026</span>
                         <strong style={{ color: 'var(--brand-black)' }}>WHERE:</strong> <span>Zoom Online Meeting</span>
-                        <strong style={{ color: 'var(--brand-black)' }}>TIME:</strong> <span>8:00 AM to 11:00 AM</span>
+                        <strong style={{ color: 'var(--brand-black)' }}>TIME:</strong> <span>7:00 PM to 10:00 PM</span>
                         <strong style={{ color: 'var(--brand-black)' }}>DURATION:</strong> <span>3 Hours</span>
                       </div>
                     </div>
