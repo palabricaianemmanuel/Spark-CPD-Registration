@@ -17,7 +17,11 @@ import {
   CheckCircle2,
   PartyPopper,
   File,
-  CreditCard
+  CreditCard,
+  Archive,
+  Plus,
+  X,
+  FolderOpen
 } from 'lucide-react';
 import { supabase } from '../supabaseClient';
 import jsPDF from 'jspdf';
@@ -26,6 +30,14 @@ import { Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType } fro
 import '../winners.css';
 
 // ─── Types ───────────────────────────────────────────────────────────
+interface Session {
+  id: string;
+  name: string;
+  is_archived: boolean;
+  created_at: string;
+  archived_at: string | null;
+}
+
 interface Registration {
   id: string; // Updated to string (UUID)
   first_name: string;
@@ -34,6 +46,7 @@ interface Registration {
   mobile_number: string;
   temporary_password: string;
   created_at: string;
+  session_id: string;
   is_winner?: boolean;
   email_sent?: boolean;
   email_sent_at?: string;
@@ -105,7 +118,20 @@ function Admin() {
   // Proof modal state
   const [proofModalUrl, setProofModalUrl] = useState<string | null>(null);
 
+  // Session state
+  const [sessions, setSessions] = useState<Session[]>([]);
+  const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
+  const [showCreateSession, setShowCreateSession] = useState(false);
+  const [newSessionName, setNewSessionName] = useState('');
+  const [showArchiveConfirm, setShowArchiveConfirm] = useState(false);
+  const [sessionLoading, setSessionLoading] = useState(false);
+  const [showSessionDropdown, setShowSessionDropdown] = useState(false);
+  const [sessionsReady, setSessionsReady] = useState(false);
+
   const tableRef = useRef<HTMLTableElement>(null);
+
+  const selectedSession = sessions.find(s => s.id === selectedSessionId);
+  const isArchivedSession = selectedSession?.is_archived ?? false;
 
   // Initialization (Session & Remember Me)
   useEffect(() => {
@@ -121,13 +147,20 @@ function Admin() {
     }
   }, []);
 
-  // Fetch records when authenticated
+  // Fetch sessions when authenticated, then records
   useEffect(() => {
     if (isAuthenticated) {
+      fetchSessions();
+    }
+  }, [isAuthenticated]);
+
+  // Fetch records when selected session changes or sessions are ready
+  useEffect(() => {
+    if (isAuthenticated && sessionsReady) {
       fetchRecords();
       fetchPaidRecords();
     }
-  }, [isAuthenticated]);
+  }, [selectedSessionId, sessionsReady]);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -177,15 +210,95 @@ function Admin() {
     setLoginPassword('');
   };
 
+  // ─── Session Management ───────────────────────────────────────────
+  const fetchSessions = async () => {
+    try {
+      const { data, error: fetchError } = await supabase
+        .from('sessions')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (fetchError) throw fetchError;
+      const sessionList = data ?? [];
+      setSessions(sessionList);
+
+      // Auto-select the first non-archived session, or the first one
+      if (sessionList.length > 0 && !selectedSessionId) {
+        const active = sessionList.find(s => !s.is_archived);
+        setSelectedSessionId(active?.id ?? sessionList[0].id);
+      }
+    } catch (err: any) {
+      console.error('Failed to fetch sessions:', err);
+      // If sessions table doesn't exist yet, still allow records to load
+    } finally {
+      setSessionsReady(true);
+    }
+  };
+
+  const handleCreateSession = async () => {
+    if (!newSessionName.trim()) return;
+    setSessionLoading(true);
+    try {
+      const { data, error: insertError } = await supabase
+        .from('sessions')
+        .insert([{ name: newSessionName.trim() }])
+        .select()
+        .single();
+
+      if (insertError) throw insertError;
+
+      setSessions(prev => [data, ...prev]);
+      setSelectedSessionId(data.id);
+      setNewSessionName('');
+      setShowCreateSession(false);
+      showToast(`Session "${data.name}" created! 🎉`);
+    } catch (err: any) {
+      setError(err.message || 'Failed to create session.');
+    } finally {
+      setSessionLoading(false);
+    }
+  };
+
+  const handleArchiveSession = async () => {
+    if (!selectedSessionId) return;
+    setSessionLoading(true);
+    try {
+      const { error: updateError } = await supabase
+        .from('sessions')
+        .update({ is_archived: true, archived_at: new Date().toISOString() })
+        .eq('id', selectedSessionId);
+
+      if (updateError) throw updateError;
+
+      setSessions(prev => prev.map(s =>
+        s.id === selectedSessionId
+          ? { ...s, is_archived: true, archived_at: new Date().toISOString() }
+          : s
+      ));
+      setShowArchiveConfirm(false);
+      showToast('Session archived successfully! 📦');
+    } catch (err: any) {
+      setError(err.message || 'Failed to archive session.');
+    } finally {
+      setSessionLoading(false);
+    }
+  };
+
   // ─── Data fetching ────────────────────────────────────────────────
   const fetchRecords = async () => {
     setLoading(true);
     setError(null);
     try {
-      const { data, error: fetchError } = await supabase
+      let query = supabase
         .from('registrations')
         .select('*')
         .order('created_at', { ascending: true });
+
+      if (selectedSessionId) {
+        query = query.eq('session_id', selectedSessionId);
+      }
+
+      const { data, error: fetchError } = await query;
 
       if (fetchError) throw fetchError;
       setRecords(data ?? []);
@@ -198,10 +311,16 @@ function Admin() {
 
   const fetchPaidRecords = async () => {
     try {
-      const { data, error: fetchError } = await supabase
+      let query = supabase
         .from('paid_registration')
         .select('*')
         .order('created_at', { ascending: false });
+
+      if (selectedSessionId) {
+        query = query.eq('session_id', selectedSessionId);
+      }
+
+      const { data, error: fetchError } = await query;
 
       if (fetchError) throw fetchError;
       setPaidRecords(data ?? []);
@@ -789,6 +908,76 @@ function Admin() {
 
       {/* ── Main ───────────────────────────────────────────────── */}
       <main className="admin-main">
+        {/* ── Session Selector Bar ──────────────────────────────── */}
+        <div className="session-bar">
+          <div className="session-bar-left">
+            <FolderOpen size={18} style={{ color: 'var(--brand-orange)' }} />
+            <span className="session-bar-label">Session:</span>
+            <div className="session-dropdown-wrapper" style={{ position: 'relative' }}>
+              <button
+                className="session-selector-btn"
+                onClick={() => setShowSessionDropdown(!showSessionDropdown)}
+              >
+                <span>{selectedSession?.name || 'Select Session'}</span>
+                {isArchivedSession && <span className="session-archived-badge">Archived</span>}
+                <ChevronDown size={16} style={{ transition: 'transform 0.2s', transform: showSessionDropdown ? 'rotate(180deg)' : 'none' }} />
+              </button>
+              {showSessionDropdown && (
+                <>
+                  <div style={{ position: 'fixed', inset: 0, zIndex: 49 }} onClick={() => setShowSessionDropdown(false)} />
+                  <div className="session-dropdown">
+                    {sessions.length === 0 ? (
+                      <div className="session-dropdown-empty">No sessions yet</div>
+                    ) : (
+                      sessions.map(s => (
+                        <button
+                          key={s.id}
+                          className={`session-dropdown-item ${s.id === selectedSessionId ? 'active' : ''}`}
+                          onClick={() => {
+                            setSelectedSessionId(s.id);
+                            setShowSessionDropdown(false);
+                            setCurrentPage(1);
+                          }}
+                        >
+                          <span>{s.name}</span>
+                          {s.is_archived && <span className="session-archived-badge">Archived</span>}
+                        </button>
+                      ))
+                    )}
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+          <div className="session-bar-actions">
+            {selectedSession && !isArchivedSession && (
+              <button
+                className="session-archive-btn"
+                onClick={() => setShowArchiveConfirm(true)}
+                disabled={sessionLoading}
+              >
+                <Archive size={16} />
+                <span>Archive</span>
+              </button>
+            )}
+            <button
+              className="session-create-btn"
+              onClick={() => setShowCreateSession(true)}
+            >
+              <Plus size={16} />
+              <span>New Session</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Archived banner */}
+        {isArchivedSession && (
+          <div className="session-archived-banner">
+            <Archive size={18} />
+            <span>This session is archived. Data is read-only.</span>
+          </div>
+        )}
+
         {/* Stats bar */}
         <div className="admin-stats-bar">
           <div className="admin-stat-card">
@@ -1316,6 +1505,60 @@ function Admin() {
                 objectFit: 'contain',
               }}
             />
+          </div>
+        </div>
+      )}
+
+      {/* ── Create Session Modal ──────────────────────────────── */}
+      {showCreateSession && (
+        <div className="modal-overlay" onClick={() => setShowCreateSession(false)}>
+          <div className="modal-card" onClick={(e) => e.stopPropagation()}>
+            <button className="modal-close" onClick={() => setShowCreateSession(false)}><X size={20} /></button>
+            <h3 className="modal-title">Create New Session</h3>
+            <p className="modal-desc">Give this session a descriptive name (e.g., "Batch 2 - June 2026").</p>
+            <input
+              type="text"
+              className="modal-input"
+              placeholder="Session Name"
+              value={newSessionName}
+              onChange={(e) => setNewSessionName(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handleCreateSession()}
+              autoFocus
+            />
+            <div className="modal-actions">
+              <button className="modal-btn-secondary" onClick={() => setShowCreateSession(false)}>Cancel</button>
+              <button className="modal-btn-primary" onClick={handleCreateSession} disabled={sessionLoading || !newSessionName.trim()}>
+                {sessionLoading ? <Loader2 className="spinner" size={16} /> : <Plus size={16} />}
+                <span>Create</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Archive Confirmation Modal ─────────────────────────── */}
+      {showArchiveConfirm && (
+        <div className="modal-overlay" onClick={() => setShowArchiveConfirm(false)}>
+          <div className="modal-card" onClick={(e) => e.stopPropagation()}>
+            <button className="modal-close" onClick={() => setShowArchiveConfirm(false)}><X size={20} /></button>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '1rem' }}>
+              <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: 'rgba(234, 179, 8, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <Archive size={24} style={{ color: '#CA8A04' }} />
+              </div>
+              <h3 className="modal-title" style={{ margin: 0 }}>Archive Session</h3>
+            </div>
+            <p className="modal-desc">
+              Are you sure you want to archive <strong>"{selectedSession?.name}"</strong>? 
+              This will make the session read-only. Registrations will no longer be accepted for this session. 
+              All existing data will be preserved.
+            </p>
+            <div className="modal-actions">
+              <button className="modal-btn-secondary" onClick={() => setShowArchiveConfirm(false)}>Cancel</button>
+              <button className="modal-btn-warning" onClick={handleArchiveSession} disabled={sessionLoading}>
+                {sessionLoading ? <Loader2 className="spinner" size={16} /> : <Archive size={16} />}
+                <span>Archive Session</span>
+              </button>
+            </div>
           </div>
         </div>
       )}

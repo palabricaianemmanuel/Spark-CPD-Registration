@@ -61,20 +61,20 @@ const CustomSelect: React.FC<CustomSelectProps> = ({ options, value, onChange, p
     setIsOpen(false);
   };
 
-  const filteredOptions = (options || []).filter(opt => 
+  const filteredOptions = (options || []).filter(opt =>
     opt.toLowerCase().includes((inputValue || '').toLowerCase())
   );
 
   return (
     <div className="relative w-full" style={{ zIndex: isOpen ? 50 : 1 }}>
       {isOpen && (
-        <div 
+        <div
           className="fixed inset-0 z-40"
           onClick={() => setIsOpen(false)}
         />
       )}
-      
-      <div 
+
+      <div
         className={`form-input flex justify-between items-center transition-all duration-300 relative z-50
           ${disabled ? 'opacity-60 cursor-not-allowed bg-slate-50' : 'bg-white cursor-text'}
           ${errorGlow ? 'shadow-[0_0_15px_rgba(255,94,0,0.4)] border-[var(--brand-orange)] ring-1 ring-[var(--brand-orange)]' : ''}
@@ -83,7 +83,7 @@ const CustomSelect: React.FC<CustomSelectProps> = ({ options, value, onChange, p
         style={{ padding: '0.6rem 1rem', minHeight: '42px', borderRadius: '8px' }}
         onClick={handleToggle}
       >
-        <input 
+        <input
           type="text"
           className={`w-full bg-transparent border-none outline-none text-[0.95rem] ${disabled ? 'cursor-not-allowed text-gray-400' : 'cursor-text text-[var(--brand-black)]'}`}
           placeholder={placeholder}
@@ -91,9 +91,9 @@ const CustomSelect: React.FC<CustomSelectProps> = ({ options, value, onChange, p
           onChange={handleInputChange}
           disabled={disabled}
         />
-        <ChevronDown 
-          size={18} 
-          className={`transition-transform duration-300 cursor-pointer flex-shrink-0 ml-2 ${isOpen ? 'rotate-180 text-[var(--brand-orange)]' : 'text-gray-400'}`} 
+        <ChevronDown
+          size={18}
+          className={`transition-transform duration-300 cursor-pointer flex-shrink-0 ml-2 ${isOpen ? 'rotate-180 text-[var(--brand-orange)]' : 'text-gray-400'}`}
           onClick={(e) => {
             e.stopPropagation();
             if (!disabled) setIsOpen(!isOpen);
@@ -101,7 +101,7 @@ const CustomSelect: React.FC<CustomSelectProps> = ({ options, value, onChange, p
         />
       </div>
 
-      <div 
+      <div
         className={`absolute top-full left-0 w-full mt-2 bg-white border border-[var(--brand-border)] rounded-lg shadow-xl z-50 overflow-hidden transition-all duration-200 transform origin-top
           ${isOpen ? 'opacity-100 scale-y-100' : 'opacity-0 scale-y-0 pointer-events-none'}
         `}
@@ -153,6 +153,11 @@ function PaidRegistration() {
   const [introKey, setIntroKey] = useState(0);
   const [hasManuallyEditedPreferredName, setHasManuallyEditedPreferredName] = useState(false);
 
+  // Session state
+  const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
+  const [sessionLoading, setSessionLoading] = useState(true);
+  const [noActiveSession, setNoActiveSession] = useState(false);
+
   const [regionErrorGlow, setRegionErrorGlow] = useState(false);
 
   const handleDivisionClickWhenDisabled = () => {
@@ -176,6 +181,35 @@ function PaidRegistration() {
 
   useEffect(() => {
     document.title = 'SPARK CPD Paid Registration';
+  }, []);
+
+  // Fetch active session on mount
+  useEffect(() => {
+    const fetchActiveSession = async () => {
+      try {
+        const { data, error: fetchError } = await supabase
+          .from('sessions')
+          .select('id')
+          .eq('is_archived', false)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (fetchError) throw fetchError;
+
+        if (data) {
+          setActiveSessionId(data.id);
+        } else {
+          setNoActiveSession(true);
+        }
+      } catch (err: any) {
+        console.error('Failed to fetch active session:', err);
+        setNoActiveSession(false);
+      } finally {
+        setSessionLoading(false);
+      }
+    };
+    fetchActiveSession();
   }, []);
 
   useEffect(() => {
@@ -341,24 +375,27 @@ function PaidRegistration() {
 
       const fileUrl = publicUrlData.publicUrl;
 
+      const insertPayload: Record<string, any> = {
+        given_name: formData.givenName,
+        middle_initial: formData.middleInitial,
+        last_name: formData.lastName,
+        preferred_name: formData.preferredName,
+        email: formData.email,
+        contact_number: formData.contactNumber,
+        position: formData.position,
+        school_name: formData.schoolName,
+        region: formData.region,
+        division: formData.division,
+        prc_id: formData.prcId,
+        proof_of_payment_url: fileUrl
+      };
+      if (activeSessionId) {
+        insertPayload.session_id = activeSessionId;
+      }
+
       const { error: insertError } = await supabase
         .from('paid_registration')
-        .insert([
-          {
-            given_name: formData.givenName,
-            middle_initial: formData.middleInitial,
-            last_name: formData.lastName,
-            preferred_name: formData.preferredName,
-            email: formData.email,
-            contact_number: formData.contactNumber,
-            position: formData.position,
-            school_name: formData.schoolName,
-            region: formData.region,
-            division: formData.division,
-            prc_id: formData.prcId,
-            proof_of_payment_url: fileUrl
-          }
-        ]);
+        .insert([insertPayload]);
 
       if (insertError) {
         throw insertError;
@@ -375,6 +412,29 @@ function PaidRegistration() {
       setLoading(false);
     }
   };
+
+  // Registration Closed screen
+  if (!sessionLoading && noActiveSession) {
+    return (
+      <div style={{
+        minHeight: '100vh',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '1rem',
+        background: '#f1f5f9',
+      }}>
+        <div className="auth-card registration-card" style={{ textAlign: 'center', padding: '3rem 2rem', maxWidth: '480px' }}>
+          <img src="/sparklogo.png" alt="SPARK Logo" className="auth-logo" style={{ marginBottom: '1rem' }} />
+          <h1 className="auth-title registration-title">Registration Closed</h1>
+          <p className="auth-subtitle" style={{ maxWidth: '400px', margin: '0 auto' }}>
+            There are currently no active paid registration sessions. Please check back later or contact the administrator.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <>
       {/* 🌪️ Welcome Animation Overlay */}
@@ -531,8 +591,8 @@ function PaidRegistration() {
 
                     <div style={{ background: '#f8fafc', padding: '20px', borderRadius: '12px', marginBottom: '1.5rem', border: '1px solid var(--brand-border)' }}>
                       <div className="grid grid-cols-1 sm:grid-cols-[100px_1fr] gap-2.5">
-                        <strong style={{ color: 'var(--brand-black)' }}>WHAT:</strong> <span>Financial Literacy</span>
-                        <strong style={{ color: 'var(--brand-black)' }}>WHEN:</strong> <span>May 29 to 31, 2026</span>
+                        <strong style={{ color: 'var(--brand-black)' }}>WHAT:</strong> <span>Mental Wellness</span>
+                        <strong style={{ color: 'var(--brand-black)' }}>WHEN:</strong> <span>June 27 to 28, 2026</span>
                         <strong style={{ color: 'var(--brand-black)' }}>WHERE:</strong> <span>Zoom Online Meeting</span>
                         <strong style={{ color: 'var(--brand-black)' }}>TIME:</strong> <span>7:00 PM to 10:00 PM</span>
                         <strong style={{ color: 'var(--brand-black)' }}>DURATION:</strong> <span>3 Hours</span>
@@ -541,7 +601,7 @@ function PaidRegistration() {
 
                     <div style={{ marginBottom: '2rem' }}>
                       <h4 style={{ color: 'var(--brand-black)', marginBottom: '0.8rem', fontSize: '1.1rem', fontWeight: 'bold' }}>Topic Description:</h4>
-                      <p>This CPD program equips participants with practical budgeting strategies they can immediately apply to manage their finances effectively by tracking income and expenses, identifying spending habits, setting financial goals, and building their own emergency funds. </p>
+                      <p>This CPD program equips participants with knowledge in understanding stress and self-care, identifying triggers early, avoiding burnout, strengthening mental and emotional wellness, and develop sustainable routines for self-care. </p>
                     </div>
 
                     <div style={{ background: 'rgba(255, 94, 0, 0.05)', border: '1px solid rgba(255, 94, 0, 0.2)', padding: '20px', borderRadius: '12px' }}>
@@ -646,7 +706,7 @@ function PaidRegistration() {
                       </div>
                       <div className="form-group" style={{ marginBottom: '0' }}>
                         <label className="form-label" style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: '0.2rem' }}>REGION *</label>
-                        <CustomSelect 
+                        <CustomSelect
                           options={Object.keys(PH_REGIONS)}
                           value={formData.region}
                           onChange={(val) => handleChange({ target: { name: 'region', value: val } } as any)}
@@ -656,7 +716,7 @@ function PaidRegistration() {
                       </div>
                       <div className="form-group" style={{ marginBottom: '0' }}>
                         <label className="form-label" style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: '0.2rem' }}>DIVISION *</label>
-                        <CustomSelect 
+                        <CustomSelect
                           options={formData.region ? PH_REGIONS[formData.region] : []}
                           value={formData.division}
                           onChange={(val) => handleChange({ target: { name: 'division', value: val } } as any)}

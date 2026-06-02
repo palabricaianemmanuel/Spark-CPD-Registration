@@ -19,9 +19,44 @@ function Registration() {
   const [registeredName, setRegisteredName] = useState('');
   const [introKey, setIntroKey] = useState(0);
 
+  // Session state
+  const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
+  const [sessionLoading, setSessionLoading] = useState(true);
+  const [noActiveSession, setNoActiveSession] = useState(false);
+
   // Page Title
   useEffect(() => {
     document.title = 'SPARK CPD Registration';
+  }, []);
+
+  // Fetch active session on mount
+  useEffect(() => {
+    const fetchActiveSession = async () => {
+      try {
+        const { data, error: fetchError } = await supabase
+          .from('sessions')
+          .select('id')
+          .eq('is_archived', false)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (fetchError) throw fetchError;
+
+        if (data) {
+          setActiveSessionId(data.id);
+        } else {
+          setNoActiveSession(true);
+        }
+      } catch (err: any) {
+        console.error('Failed to fetch active session:', err);
+        // Fallback: don't block registration if sessions table doesn't exist yet
+        setNoActiveSession(false);
+      } finally {
+        setSessionLoading(false);
+      }
+    };
+    fetchActiveSession();
   }, []);
 
   // Intro timer
@@ -127,33 +162,38 @@ function Registration() {
     }
 
     try {
-      // 4. Duplicate Checks (Supabase)
-      const { data: nameCheck } = await supabase
+      // 4. Duplicate Checks (Supabase) — scoped to the active session
+      const sessionFilter = activeSessionId || undefined;
+
+      let nameQuery = supabase
         .from('registrations')
         .select('id')
         .eq('first_name', formData.firstName)
-        .eq('last_name', formData.lastName)
-        .maybeSingle();
+        .eq('last_name', formData.lastName);
+      if (sessionFilter) nameQuery = nameQuery.eq('session_id', sessionFilter);
+      const { data: nameCheck } = await nameQuery.maybeSingle();
 
       if (nameCheck) {
         throw new Error('A person with this name is already registered.');
       }
 
-      const { data: emailCheck } = await supabase
+      let emailQuery = supabase
         .from('registrations')
         .select('id')
-        .eq('email', formData.email)
-        .maybeSingle();
+        .eq('email', formData.email);
+      if (sessionFilter) emailQuery = emailQuery.eq('session_id', sessionFilter);
+      const { data: emailCheck } = await emailQuery.maybeSingle();
 
       if (emailCheck) {
         throw new Error('Email already registered.');
       }
 
-      const { data: mobileCheck } = await supabase
+      let mobileQuery = supabase
         .from('registrations')
         .select('id')
-        .eq('mobile_number', cleanedMobile)
-        .maybeSingle();
+        .eq('mobile_number', cleanedMobile);
+      if (sessionFilter) mobileQuery = mobileQuery.eq('session_id', sessionFilter);
+      const { data: mobileCheck } = await mobileQuery.maybeSingle();
 
       if (mobileCheck) {
         throw new Error('Mobile number already registered.');
@@ -162,17 +202,20 @@ function Registration() {
       const tempPassword = generatePassword();
       const firstNameToStore = formData.firstName;
 
+      const insertPayload: Record<string, string> = {
+        first_name: formData.firstName,
+        last_name: formData.lastName,
+        email: formData.email,
+        mobile_number: cleanedMobile,
+        temporary_password: tempPassword
+      };
+      if (activeSessionId) {
+        insertPayload.session_id = activeSessionId;
+      }
+
       const { error: submitError } = await supabase
         .from('registrations')
-        .insert([
-          {
-            first_name: formData.firstName,
-            last_name: formData.lastName,
-            email: formData.email,
-            mobile_number: cleanedMobile,
-            temporary_password: tempPassword
-          }
-        ]);
+        .insert([insertPayload]);
 
       if (submitError) {
         if (submitError.code === '23505') {
@@ -191,6 +234,26 @@ function Registration() {
       setLoading(false);
     }
   };
+
+  // Registration Closed screen
+  if (!sessionLoading && noActiveSession) {
+    return (
+      <>
+        <TheInfiniteGrid />
+        <div className="auth-container registration-container">
+          <div className="registration-card-entrance">
+            <div className="auth-card registration-card" style={{ textAlign: 'center', padding: '3rem 2rem' }}>
+              <img src="/sparklogo.png" alt="SPARK Logo" className="auth-logo" style={{ marginBottom: '1rem' }} />
+              <h1 className="auth-title registration-title">Registration Closed</h1>
+              <p className="auth-subtitle" style={{ maxWidth: '400px', margin: '0 auto' }}>
+                There are currently no active registration sessions. Please check back later or contact the administrator.
+              </p>
+            </div>
+          </div>
+        </div>
+      </>
+    );
+  }
 
   return (
     <>
