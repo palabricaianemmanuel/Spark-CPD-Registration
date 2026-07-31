@@ -591,8 +591,8 @@ function PaidRegistration() {
 
                     <div style={{ background: '#f8fafc', padding: '20px', borderRadius: '12px', marginBottom: '1.5rem', border: '1px solid var(--brand-border)' }}>
                       <div className="grid grid-cols-1 sm:grid-cols-[100px_1fr] gap-2.5">
-                        <strong style={{ color: 'var(--brand-black)' }}>WHAT:</strong> <span>Mental Wellness</span>
-                        <strong style={{ color: 'var(--brand-black)' }}>WHEN:</strong> <span>June 27 to 28, 2026</span>
+                        <strong style={{ color: 'var(--brand-black)' }}>WHAT:</strong> <span>Illuminate Learning - Designing Engaging Lessons Through ILAW Framework</span>
+                        <strong style={{ color: 'var(--brand-black)' }}>WHEN:</strong> <span>August 14 to 15, 2026</span>
                         <strong style={{ color: 'var(--brand-black)' }}>WHERE:</strong> <span>Zoom Online Meeting</span>
                         <strong style={{ color: 'var(--brand-black)' }}>TIME:</strong> <span>7:00 PM to 10:00 PM</span>
                         <strong style={{ color: 'var(--brand-black)' }}>DURATION:</strong> <span>3 Hours</span>
@@ -601,16 +601,16 @@ function PaidRegistration() {
 
                     <div style={{ marginBottom: '2rem' }}>
                       <h4 style={{ color: 'var(--brand-black)', marginBottom: '0.8rem', fontSize: '1.1rem', fontWeight: 'bold' }}>Topic Description:</h4>
-                      <p>This CPD program equips participants with knowledge in understanding stress and self-care, identifying triggers early, avoiding burnout, strengthening mental and emotional wellness, and develop sustainable routines for self-care. </p>
+                      <p> This CPD Program equips participants with the essential skills to set clear and measurable learning goals with precision, design immersive and interactive learning experiences, integrate effective assessment and feedback strategies, and adapt as well as scaffold instruction to meet the diverse needs of every student.</p>
                     </div>
 
                     <div style={{ background: 'rgba(255, 94, 0, 0.05)', border: '1px solid rgba(255, 94, 0, 0.2)', padding: '20px', borderRadius: '12px' }}>
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
                         <span style={{ fontSize: '1.1rem', color: 'var(--brand-black)', fontWeight: 'bold' }}>Investment Fee</span>
-                        <span style={{ color: 'var(--brand-orange)', fontSize: '1.4rem', fontWeight: 'bold' }}>Php 300.00</span>
+                        <span style={{ color: 'var(--brand-orange)', fontSize: '1.4rem', fontWeight: 'bold' }}>Php 500.00</span>
                       </div>
                       <div style={{ height: '1px', background: 'rgba(255, 94, 0, 0.2)', margin: '10px 0' }} />
-                      <p style={{ fontSize: '0.95rem' }}><strong style={{ color: 'var(--brand-black)' }}>Inclusions:</strong> Online Learning Materials and E-Certificate with 4 CPD Units</p>
+                      <p style={{ fontSize: '0.95rem' }}><strong style={{ color: 'var(--brand-black)' }}>Inclusions:</strong> Online Learning Materials and E-Certificate with 3 CPD Units</p>
                     </div>
                   </div>
                 )}
@@ -761,7 +761,7 @@ function PaidRegistration() {
                         <div style={{ background: 'rgba(255, 94, 0, 0.05)', border: '1px solid rgba(255, 94, 0, 0.2)', padding: '15px', borderRadius: '12px', marginBottom: '1.5rem' }}>
                           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                             <span style={{ color: 'var(--brand-black)', fontWeight: '500' }}>Total Due</span>
-                            <span style={{ color: 'var(--brand-orange)', fontWeight: 'bold', fontSize: '1.2rem' }}>Php 300.00</span>
+                            <span style={{ color: 'var(--brand-orange)', fontWeight: 'bold', fontSize: '1.2rem' }}>Php 500.00</span>
                           </div>
                         </div>
 
