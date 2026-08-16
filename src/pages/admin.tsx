@@ -36,6 +36,14 @@ interface Session {
   is_archived: boolean;
   created_at: string;
   archived_at: string | null;
+  what?: string;
+  when_date?: string;
+  where_location?: string;
+  time_schedule?: string;
+  duration?: string;
+  topic_description?: string;
+  investment_fee?: string;
+  cpd_units?: string;
 }
 
 interface Registration {
@@ -123,6 +131,14 @@ function Admin() {
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
   const [showCreateSession, setShowCreateSession] = useState(false);
   const [newSessionName, setNewSessionName] = useState('');
+  const [newSessionWhat, setNewSessionWhat] = useState('');
+  const [newSessionWhen, setNewSessionWhen] = useState('');
+  const [newSessionWhere, setNewSessionWhere] = useState('');
+  const [newSessionStartTime, setNewSessionStartTime] = useState('');
+  const [newSessionEndTime, setNewSessionEndTime] = useState('');
+  const [newSessionTopic, setNewSessionTopic] = useState('');
+  const [newSessionFee, setNewSessionFee] = useState('');
+  const [newSessionCpdUnits, setNewSessionCpdUnits] = useState('');
   const [showArchiveConfirm, setShowArchiveConfirm] = useState(false);
   const [sessionLoading, setSessionLoading] = useState(false);
   const [showSessionDropdown, setShowSessionDropdown] = useState(false);
@@ -235,13 +251,54 @@ function Admin() {
     }
   };
 
+  const calculateDurationAndSchedule = (start: string, end: string) => {
+    if (!start || !end) return { time_schedule: '', duration: '' };
+    
+    const [startH, startM] = start.split(':').map(Number);
+    const [endH, endM] = end.split(':').map(Number);
+    
+    const format12H = (h: number, m: number) => {
+      const ampm = h >= 12 ? 'PM' : 'AM';
+      const h12 = h % 12 || 12;
+      return `${h12}:${m.toString().padStart(2, '0')} ${ampm}`;
+    };
+    
+    const schedule = `${format12H(startH, startM)} to ${format12H(endH, endM)}`;
+    
+    let startTotalMins = startH * 60 + startM;
+    let endTotalMins = endH * 60 + endM;
+    if (endTotalMins < startTotalMins) endTotalMins += 24 * 60; // next day
+    
+    const diffMins = endTotalMins - startTotalMins;
+    const hours = Math.floor(diffMins / 60);
+    const mins = diffMins % 60;
+    
+    const durationParts = [];
+    if (hours > 0) durationParts.push(`${hours} Hour${hours > 1 ? 's' : ''}`);
+    if (mins > 0) durationParts.push(`${mins} Minute${mins > 1 ? 's' : ''}`);
+    
+    return { time_schedule: schedule, duration: durationParts.join(' and ') };
+  };
+
   const handleCreateSession = async () => {
     if (!newSessionName.trim()) return;
     setSessionLoading(true);
     try {
+      const { time_schedule, duration } = calculateDurationAndSchedule(newSessionStartTime, newSessionEndTime);
+
       const { data, error: insertError } = await supabase
         .from('sessions')
-        .insert([{ name: newSessionName.trim() }])
+        .insert([{ 
+          name: newSessionName.trim(),
+          what: newSessionWhat.trim(),
+          when_date: newSessionWhen.trim(),
+          where_location: newSessionWhere.trim(),
+          time_schedule,
+          duration,
+          topic_description: newSessionTopic.trim(),
+          investment_fee: newSessionFee.trim(),
+          cpd_units: newSessionCpdUnits.trim()
+        }])
         .select()
         .single();
 
@@ -249,7 +306,17 @@ function Admin() {
 
       setSessions(prev => [data, ...prev]);
       setSelectedSessionId(data.id);
+      
       setNewSessionName('');
+      setNewSessionWhat('');
+      setNewSessionWhen('');
+      setNewSessionWhere('');
+      setNewSessionStartTime('');
+      setNewSessionEndTime('');
+      setNewSessionTopic('');
+      setNewSessionFee('');
+      setNewSessionCpdUnits('');
+      
       setShowCreateSession(false);
       showToast(`Session "${data.name}" created! 🎉`);
     } catch (err: any) {
@@ -1511,20 +1578,62 @@ function Admin() {
 
       {/* ── Create Session Modal ──────────────────────────────── */}
       {showCreateSession && (
-        <div className="modal-overlay" onClick={() => setShowCreateSession(false)}>
-          <div className="modal-card" onClick={(e) => e.stopPropagation()}>
+        <div className="modal-overlay" onClick={() => setShowCreateSession(false)} style={{ overflowY: 'auto', padding: '2rem 0' }}>
+          <div className="modal-card" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '600px', width: '90%', margin: 'auto' }}>
             <button className="modal-close" onClick={() => setShowCreateSession(false)}><X size={20} /></button>
             <h3 className="modal-title">Create New Session</h3>
-            <p className="modal-desc">Give this session a descriptive name (e.g., "Batch 2 - June 2026").</p>
-            <input
-              type="text"
-              className="modal-input"
-              placeholder="Session Name"
-              value={newSessionName}
-              onChange={(e) => setNewSessionName(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && handleCreateSession()}
-              autoFocus
-            />
+            <p className="modal-desc">Fill in the session details for the registration page.</p>
+            
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', maxHeight: '60vh', overflowY: 'auto', paddingRight: '0.5rem', marginBottom: '1.5rem' }}>
+              <div className="form-group" style={{ margin: 0 }}>
+                <label className="form-label" style={{ fontSize: '0.75rem', marginBottom: '0.2rem' }}>SESSION NAME (Internal)*</label>
+                <input type="text" className="form-input" style={{ padding: '0.6rem 1rem' }} placeholder="e.g. Batch 2 - June 2026" value={newSessionName} onChange={(e) => setNewSessionName(e.target.value)} />
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="form-group" style={{ margin: 0 }}>
+                  <label className="form-label" style={{ fontSize: '0.75rem', marginBottom: '0.2rem' }}>WHAT</label>
+                  <input type="text" className="form-input" style={{ padding: '0.6rem 1rem' }} placeholder="e.g. Mental Wellness" value={newSessionWhat} onChange={(e) => setNewSessionWhat(e.target.value)} />
+                </div>
+                <div className="form-group" style={{ margin: 0 }}>
+                  <label className="form-label" style={{ fontSize: '0.75rem', marginBottom: '0.2rem' }}>WHEN (Date string)</label>
+                  <input type="text" className="form-input" style={{ padding: '0.6rem 1rem' }} placeholder="e.g. June 27 to 28, 2026" value={newSessionWhen} onChange={(e) => setNewSessionWhen(e.target.value)} />
+                </div>
+              </div>
+
+              <div className="form-group" style={{ margin: 0 }}>
+                <label className="form-label" style={{ fontSize: '0.75rem', marginBottom: '0.2rem' }}>WHERE</label>
+                <input type="text" className="form-input" style={{ padding: '0.6rem 1rem' }} placeholder="e.g. Zoom Online Meeting" value={newSessionWhere} onChange={(e) => setNewSessionWhere(e.target.value)} />
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="form-group" style={{ margin: 0 }}>
+                  <label className="form-label" style={{ fontSize: '0.75rem', marginBottom: '0.2rem' }}>START TIME</label>
+                  <input type="time" className="form-input" style={{ padding: '0.6rem 1rem' }} value={newSessionStartTime} onChange={(e) => setNewSessionStartTime(e.target.value)} />
+                </div>
+                <div className="form-group" style={{ margin: 0 }}>
+                  <label className="form-label" style={{ fontSize: '0.75rem', marginBottom: '0.2rem' }}>END TIME</label>
+                  <input type="time" className="form-input" style={{ padding: '0.6rem 1rem' }} value={newSessionEndTime} onChange={(e) => setNewSessionEndTime(e.target.value)} />
+                </div>
+              </div>
+
+              <div className="form-group" style={{ margin: 0 }}>
+                <label className="form-label" style={{ fontSize: '0.75rem', marginBottom: '0.2rem' }}>TOPIC DESCRIPTION</label>
+                <textarea className="form-input" style={{ padding: '0.6rem 1rem', minHeight: '80px', resize: 'vertical' }} placeholder="Description..." value={newSessionTopic} onChange={(e) => setNewSessionTopic(e.target.value)} />
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="form-group" style={{ margin: 0 }}>
+                  <label className="form-label" style={{ fontSize: '0.75rem', marginBottom: '0.2rem' }}>INVESTMENT FEE AMOUNT</label>
+                  <input type="number" step="0.01" className="form-input" style={{ padding: '0.6rem 1rem' }} placeholder="e.g. 300.00" value={newSessionFee} onChange={(e) => setNewSessionFee(e.target.value)} />
+                </div>
+                <div className="form-group" style={{ margin: 0 }}>
+                  <label className="form-label" style={{ fontSize: '0.75rem', marginBottom: '0.2rem' }}>CPD UNITS</label>
+                  <input type="number" className="form-input" style={{ padding: '0.6rem 1rem' }} placeholder="e.g. 4" value={newSessionCpdUnits} onChange={(e) => setNewSessionCpdUnits(e.target.value)} />
+                </div>
+              </div>
+            </div>
+
             <div className="modal-actions">
               <button className="modal-btn-secondary" onClick={() => setShowCreateSession(false)}>Cancel</button>
               <button className="modal-btn-primary" onClick={handleCreateSession} disabled={sessionLoading || !newSessionName.trim()}>

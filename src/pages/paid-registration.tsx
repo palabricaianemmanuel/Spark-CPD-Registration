@@ -155,6 +155,7 @@ function PaidRegistration() {
 
   // Session state
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
+  const [activeSession, setActiveSession] = useState<any>(null);
   const [sessionLoading, setSessionLoading] = useState(true);
   const [noActiveSession, setNoActiveSession] = useState(false);
 
@@ -189,7 +190,7 @@ function PaidRegistration() {
       try {
         const { data, error: fetchError } = await supabase
           .from('sessions')
-          .select('id')
+          .select('*')
           .eq('is_archived', false)
           .order('created_at', { ascending: false })
           .limit(1)
@@ -199,6 +200,7 @@ function PaidRegistration() {
 
         if (data) {
           setActiveSessionId(data.id);
+          setActiveSession(data);
         } else {
           setNoActiveSession(true);
         }
@@ -307,7 +309,7 @@ function PaidRegistration() {
     setIntroKey(prev => prev + 1);
   };
 
-  const nextStep = () => {
+  const nextStep = async () => {
     setError(null);
     if (currentStep === 2 && consent !== 'agree') {
       setError('You must agree to the data privacy consent to proceed.');
@@ -334,6 +336,34 @@ function PaidRegistration() {
         setError('Contact number must be exactly 11 digits.');
         triggerShake();
         return;
+      }
+
+      if (activeSessionId) {
+        setLoading(true);
+        try {
+          const { data: existingReg, error: fetchError } = await supabase
+            .from('paid_registration')
+            .select('id')
+            .eq('email', email)
+            .eq('session_id', activeSessionId)
+            .maybeSingle();
+
+          if (fetchError) throw fetchError;
+
+          if (existingReg) {
+            setError('This email has already been registered for the current session.');
+            triggerShake();
+            setLoading(false);
+            return;
+          }
+        } catch (err) {
+          console.error('Email validation error:', err);
+          setError('Failed to validate email. Please try again.');
+          triggerShake();
+          setLoading(false);
+          return;
+        }
+        setLoading(false);
       }
     }
 
@@ -591,26 +621,26 @@ function PaidRegistration() {
 
                     <div style={{ background: '#f8fafc', padding: '20px', borderRadius: '12px', marginBottom: '1.5rem', border: '1px solid var(--brand-border)' }}>
                       <div className="grid grid-cols-1 sm:grid-cols-[100px_1fr] gap-2.5">
-                        <strong style={{ color: 'var(--brand-black)' }}>WHAT:</strong> <span>Mental Wellness</span>
-                        <strong style={{ color: 'var(--brand-black)' }}>WHEN:</strong> <span>June 27 to 28, 2026</span>
-                        <strong style={{ color: 'var(--brand-black)' }}>WHERE:</strong> <span>Zoom Online Meeting</span>
-                        <strong style={{ color: 'var(--brand-black)' }}>TIME:</strong> <span>7:00 PM to 10:00 PM</span>
-                        <strong style={{ color: 'var(--brand-black)' }}>DURATION:</strong> <span>3 Hours</span>
+                        <strong style={{ color: 'var(--brand-black)' }}>WHAT:</strong> <span>{activeSession?.what || 'Mental Wellness'}</span>
+                        <strong style={{ color: 'var(--brand-black)' }}>WHEN:</strong> <span>{activeSession?.when_date || 'June 27 to 28, 2026'}</span>
+                        <strong style={{ color: 'var(--brand-black)' }}>WHERE:</strong> <span>{activeSession?.where_location || 'Zoom Online Meeting'}</span>
+                        <strong style={{ color: 'var(--brand-black)' }}>TIME:</strong> <span>{activeSession?.time_schedule || '7:00 PM to 10:00 PM'}</span>
+                        <strong style={{ color: 'var(--brand-black)' }}>DURATION:</strong> <span>{activeSession?.duration || '3 Hours'}</span>
                       </div>
                     </div>
 
                     <div style={{ marginBottom: '2rem' }}>
                       <h4 style={{ color: 'var(--brand-black)', marginBottom: '0.8rem', fontSize: '1.1rem', fontWeight: 'bold' }}>Topic Description:</h4>
-                      <p>This CPD program equips participants with knowledge in understanding stress and self-care, identifying triggers early, avoiding burnout, strengthening mental and emotional wellness, and develop sustainable routines for self-care. </p>
+                      <p>{activeSession?.topic_description || 'This CPD program equips participants with knowledge in understanding stress and self-care, identifying triggers early, avoiding burnout, strengthening mental and emotional wellness, and develop sustainable routines for self-care.'}</p>
                     </div>
 
                     <div style={{ background: 'rgba(255, 94, 0, 0.05)', border: '1px solid rgba(255, 94, 0, 0.2)', padding: '20px', borderRadius: '12px' }}>
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
                         <span style={{ fontSize: '1.1rem', color: 'var(--brand-black)', fontWeight: 'bold' }}>Investment Fee</span>
-                        <span style={{ color: 'var(--brand-orange)', fontSize: '1.4rem', fontWeight: 'bold' }}>Php 300.00</span>
+                        <span style={{ color: 'var(--brand-orange)', fontSize: '1.4rem', fontWeight: 'bold' }}>Php {activeSession?.investment_fee || '300.00'}</span>
                       </div>
                       <div style={{ height: '1px', background: 'rgba(255, 94, 0, 0.2)', margin: '10px 0' }} />
-                      <p style={{ fontSize: '0.95rem' }}><strong style={{ color: 'var(--brand-black)' }}>Inclusions:</strong> Online Learning Materials and E-Certificate with 4 CPD Units</p>
+                      <p style={{ fontSize: '0.95rem' }}><strong style={{ color: 'var(--brand-black)' }}>Inclusions:</strong> Online Learning Materials and E-Certificate with {activeSession?.cpd_units || '4'} CPD Units</p>
                     </div>
                   </div>
                 )}
@@ -828,8 +858,16 @@ function PaidRegistration() {
                     onClick={nextStep}
                     className="submit-btn"
                     style={{ flex: 2 }}
+                    disabled={loading}
                   >
-                    Continue
+                    {loading && currentStep === 3 ? (
+                      <>
+                        <Loader2 className="spinner" size={20} />
+                        <span>Validating...</span>
+                      </>
+                    ) : (
+                      'Continue'
+                    )}
                   </button>
                 ) : (
                   <button
