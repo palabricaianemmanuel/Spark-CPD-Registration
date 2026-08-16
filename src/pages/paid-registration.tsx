@@ -621,26 +621,26 @@ function PaidRegistration() {
 
                     <div style={{ background: '#f8fafc', padding: '20px', borderRadius: '12px', marginBottom: '1.5rem', border: '1px solid var(--brand-border)' }}>
                       <div className="grid grid-cols-1 sm:grid-cols-[100px_1fr] gap-2.5">
-                        <strong style={{ color: 'var(--brand-black)' }}>WHAT:</strong> <span>Mental Wellness</span>
-                        <strong style={{ color: 'var(--brand-black)' }}>WHEN:</strong> <span>June 27 to 28, 2026</span>
-                        <strong style={{ color: 'var(--brand-black)' }}>WHERE:</strong> <span>Zoom Online Meeting</span>
-                        <strong style={{ color: 'var(--brand-black)' }}>TIME:</strong> <span>7:00 PM to 10:00 PM</span>
-                        <strong style={{ color: 'var(--brand-black)' }}>DURATION:</strong> <span>3 Hours</span>
+                        <strong style={{ color: 'var(--brand-black)' }}>WHAT:</strong> <span>{activeSession?.what || 'Mental Wellness'}</span>
+                        <strong style={{ color: 'var(--brand-black)' }}>WHEN:</strong> <span>{activeSession?.when_date || 'June 27 to 28, 2026'}</span>
+                        <strong style={{ color: 'var(--brand-black)' }}>WHERE:</strong> <span>{activeSession?.where_location || 'Zoom Online Meeting'}</span>
+                        <strong style={{ color: 'var(--brand-black)' }}>TIME:</strong> <span>{activeSession?.time_schedule || '7:00 PM to 10:00 PM'}</span>
+                        <strong style={{ color: 'var(--brand-black)' }}>DURATION:</strong> <span>{activeSession?.duration || '3 Hours'}</span>
                       </div>
                     </div>
 
                     <div style={{ marginBottom: '2rem' }}>
                       <h4 style={{ color: 'var(--brand-black)', marginBottom: '0.8rem', fontSize: '1.1rem', fontWeight: 'bold' }}>Topic Description:</h4>
-                      <p>This CPD program equips participants with knowledge in understanding stress and self-care, identifying triggers early, avoiding burnout, strengthening mental and emotional wellness, and develop sustainable routines for self-care. </p>
+                      <p>{activeSession?.topic_description || 'This CPD program equips participants with knowledge in understanding stress and self-care, identifying triggers early, avoiding burnout, strengthening mental and emotional wellness, and develop sustainable routines for self-care.'}</p>
                     </div>
 
                     <div style={{ background: 'rgba(255, 94, 0, 0.05)', border: '1px solid rgba(255, 94, 0, 0.2)', padding: '20px', borderRadius: '12px' }}>
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
                         <span style={{ fontSize: '1.1rem', color: 'var(--brand-black)', fontWeight: 'bold' }}>Investment Fee</span>
-                        <span style={{ color: 'var(--brand-orange)', fontSize: '1.4rem', fontWeight: 'bold' }}>Php 300.00</span>
+                        <span style={{ color: 'var(--brand-orange)', fontSize: '1.4rem', fontWeight: 'bold' }}>Php {activeSession?.investment_fee || '300.00'}</span>
                       </div>
                       <div style={{ height: '1px', background: 'rgba(255, 94, 0, 0.2)', margin: '10px 0' }} />
-                      <p style={{ fontSize: '0.95rem' }}><strong style={{ color: 'var(--brand-black)' }}>Inclusions:</strong> Online Learning Materials and E-Certificate with 4 CPD Units</p>
+                      <p style={{ fontSize: '0.95rem' }}><strong style={{ color: 'var(--brand-black)' }}>Inclusions:</strong> Online Learning Materials and E-Certificate with {activeSession?.cpd_units || '4'} CPD Units</p>
                     </div>
                   </div>
                 )}
