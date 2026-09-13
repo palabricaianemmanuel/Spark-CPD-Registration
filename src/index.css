@@ -2323,4 +2323,114 @@ body {
     flex: 1;
   }
 }
+
+/* ═══════════════════════════════════════════════════════════════════
+   DAY TABS — Per-day schedule display (Registration Page)
+   ═══════════════════════════════════════════════════════════════════ */
+
+.day-tabs {
+  display: flex;
+  gap: 4px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+
+.day-tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.day-tab {
+  padding: 0.5rem 1rem;
+  border-radius: 8px 8px 0 0;
+  border: 1px solid var(--brand-border);
+  border-bottom: 1px solid var(--brand-border);
+  background: #f8fafc;
+  color: var(--brand-text);
+  font-weight: 500;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+  min-width: fit-content;
+  position: relative;
+}
+
+.day-tab:hover {
+  background: #f1f5f9;
+  color: var(--brand-orange);
+}
+
+.day-tab.active {
+  background: #fff;
+  color: var(--brand-orange);
+  font-weight: 700;
+  border-bottom: 2px solid var(--brand-orange);
+  z-index: 2;
+  margin-bottom: -1px;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   MODALITY BADGES — Synchronous / Asynchronous indicators
+   ═══════════════════════════════════════════════════════════════════ */
+
+.modality-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  transition: all 0.2s ease;
+}
+
+.modality-badge.sync {
+  background: rgba(34, 197, 94, 0.1);
+  color: #16a34a;
+}
+
+.modality-badge.async {
+  background: rgba(139, 92, 246, 0.1);
+  color: #7c3aed;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   SESSION DAY ROWS — Admin create session modal
+   ═══════════════════════════════════════════════════════════════════ */
+
+.session-day-row {
+  transition: all 0.2s ease;
+}
+
+.session-day-row:hover {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   FADE-IN ANIMATION
+   ═══════════════════════════════════════════════════════════════════ */
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Responsive adjustments for day tabs */
+@media (max-width: 640px) {
+  .day-tabs {
+    gap: 2px;
+  }
+
+  .day-tab {
+    padding: 0.4rem 0.75rem;
+    font-size: 0.8rem;
+  }
+}
 

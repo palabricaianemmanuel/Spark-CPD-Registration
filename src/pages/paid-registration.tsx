@@ -158,6 +158,8 @@ function PaidRegistration() {
   const [activeSession, setActiveSession] = useState<any>(null);
   const [sessionLoading, setSessionLoading] = useState(true);
   const [noActiveSession, setNoActiveSession] = useState(false);
+  const [sessionDays, setSessionDays] = useState<any[]>([]);
+  const [activeDayTab, setActiveDayTab] = useState(0);
 
   const [regionErrorGlow, setRegionErrorGlow] = useState(false);
 
@@ -201,6 +203,21 @@ function PaidRegistration() {
         if (data) {
           setActiveSessionId(data.id);
           setActiveSession(data);
+
+          // Fetch session_days for this session
+          try {
+            const { data: daysData } = await supabase
+              .from('session_days')
+              .select('*')
+              .eq('session_id', data.id)
+              .order('day_number', { ascending: true });
+
+            if (daysData && daysData.length > 0) {
+              setSessionDays(daysData);
+            }
+          } catch {
+            // session_days table may not exist yet
+          }
         } else {
           setNoActiveSession(true);
         }
@@ -618,16 +635,106 @@ function PaidRegistration() {
                 {currentStep === 1 && (
                   <div className="step-1 fade-in" style={{ color: 'var(--brand-text)', lineHeight: '1.7' }}>
 
-
+                    {/* Session-level info: WHAT */}
                     <div style={{ background: '#f8fafc', padding: '20px', borderRadius: '12px', marginBottom: '1.5rem', border: '1px solid var(--brand-border)' }}>
                       <div className="grid grid-cols-1 sm:grid-cols-[100px_1fr] gap-2.5">
                         <strong style={{ color: 'var(--brand-black)' }}>WHAT:</strong> <span>{activeSession?.what || 'Mental Wellness'}</span>
                         <strong style={{ color: 'var(--brand-black)' }}>WHEN:</strong> <span>{activeSession?.when_date || 'June 27 to 28, 2026'}</span>
-                        <strong style={{ color: 'var(--brand-black)' }}>WHERE:</strong> <span>{activeSession?.where_location || 'Zoom Online Meeting'}</span>
-                        <strong style={{ color: 'var(--brand-black)' }}>TIME:</strong> <span>{activeSession?.time_schedule || '7:00 PM to 10:00 PM'}</span>
-                        <strong style={{ color: 'var(--brand-black)' }}>DURATION:</strong> <span>{activeSession?.duration || '3 Hours'}</span>
                       </div>
                     </div>
+
+                    {/* Day-by-day tabs (if session has days) */}
+                    {sessionDays.length > 0 ? (
+                      <div style={{ marginBottom: '1.5rem' }}>
+                        {/* Tab bar */}
+                        <div className="day-tabs" style={{
+                          display: 'flex', gap: '4px', marginBottom: '0', overflowX: 'auto',
+                          padding: '0 0 0 0', borderBottom: 'none'
+                        }}>
+                          {sessionDays.map((day: any, idx: number) => (
+                            <button
+                              key={idx}
+                              className={`day-tab ${activeDayTab === idx ? 'active' : ''}`}
+                              onClick={() => setActiveDayTab(idx)}
+                              style={{
+                                padding: '0.5rem 1rem', borderRadius: '8px 8px 0 0', border: '1px solid var(--brand-border)',
+                                borderBottom: activeDayTab === idx ? '2px solid var(--brand-orange)' : '1px solid var(--brand-border)',
+                                background: activeDayTab === idx ? '#fff' : '#f8fafc',
+                                color: activeDayTab === idx ? 'var(--brand-orange)' : 'var(--brand-text)',
+                                fontWeight: activeDayTab === idx ? '700' : '500',
+                                fontSize: '0.85rem', cursor: 'pointer', transition: 'all 0.2s ease',
+                                whiteSpace: 'nowrap', minWidth: 'fit-content',
+                                position: 'relative', zIndex: activeDayTab === idx ? 2 : 1,
+                                marginBottom: activeDayTab === idx ? '-1px' : '0'
+                              }}
+                            >
+                              {day.day_label || `Day ${day.day_number}`}
+                            </button>
+                          ))}
+                        </div>
+
+                        {/* Tab content */}
+                        <div style={{
+                          background: '#fff', border: '1px solid var(--brand-border)',
+                          borderRadius: '0 12px 12px 12px', padding: '1.25rem',
+                          animation: 'fadeIn 0.25s ease'
+                        }}>
+                          {(() => {
+                            const day = sessionDays[activeDayTab];
+                            if (!day) return null;
+                            return (
+                              <div key={day.day_number}>
+                                {/* Modality badge */}
+                                <div style={{ marginBottom: '0.75rem' }}>
+                                  <span className={`modality-badge ${day.modality === 'Asynchronous' ? 'async' : 'sync'}`} style={{
+                                    display: 'inline-flex', alignItems: 'center', gap: '6px',
+                                    padding: '4px 12px', borderRadius: '20px', fontSize: '0.8rem', fontWeight: '600',
+                                    background: day.modality === 'Asynchronous' ? 'rgba(139, 92, 246, 0.1)' : 'rgba(34, 197, 94, 0.1)',
+                                    color: day.modality === 'Asynchronous' ? '#7c3aed' : '#16a34a',
+                                  }}>
+                                    {day.modality === 'Asynchronous' ? '📖' : '📹'} {day.modality}
+                                  </span>
+                                </div>
+
+                                <div className="grid grid-cols-1 sm:grid-cols-[100px_1fr] gap-2.5">
+                                  <strong style={{ color: 'var(--brand-black)' }}>DATE:</strong>
+                                  <span>{day.day_date}</span>
+
+                                  <strong style={{ color: 'var(--brand-black)' }}>WHERE:</strong>
+                                  <span>{day.where_location}</span>
+
+                                  {day.modality === 'Synchronous' && (
+                                    <>
+                                      <strong style={{ color: 'var(--brand-black)' }}>TIME:</strong>
+                                      <span>{day.time_schedule || 'TBA'}</span>
+
+                                      <strong style={{ color: 'var(--brand-black)' }}>DURATION:</strong>
+                                      <span>{day.duration || 'TBA'}</span>
+                                    </>
+                                  )}
+
+                                  {day.modality === 'Asynchronous' && (
+                                    <>
+                                      <strong style={{ color: 'var(--brand-black)' }}>TIME:</strong>
+                                      <span style={{ color: '#7c3aed', fontStyle: 'italic' }}>Self-paced</span>
+                                    </>
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          })()}
+                        </div>
+                      </div>
+                    ) : (
+                      /* Legacy flat display for sessions without days */
+                      <div style={{ background: '#f8fafc', padding: '20px', borderRadius: '12px', marginBottom: '1.5rem', border: '1px solid var(--brand-border)' }}>
+                        <div className="grid grid-cols-1 sm:grid-cols-[100px_1fr] gap-2.5">
+                          <strong style={{ color: 'var(--brand-black)' }}>WHERE:</strong> <span>{activeSession?.where_location || 'Zoom Online Meeting'}</span>
+                          <strong style={{ color: 'var(--brand-black)' }}>TIME:</strong> <span>{activeSession?.time_schedule || '7:00 PM to 10:00 PM'}</span>
+                          <strong style={{ color: 'var(--brand-black)' }}>DURATION:</strong> <span>{activeSession?.duration || '3 Hours'}</span>
+                        </div>
+                      </div>
+                    )}
 
                     <div style={{ marginBottom: '2rem' }}>
                       <h4 style={{ color: 'var(--brand-black)', marginBottom: '0.8rem', fontSize: '1.1rem', fontWeight: 'bold' }}>Topic Description:</h4>

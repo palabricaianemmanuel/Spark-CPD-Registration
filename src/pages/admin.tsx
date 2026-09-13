@@ -21,7 +21,9 @@ import {
   Archive,
   Plus,
   X,
-  FolderOpen
+  FolderOpen,
+  Trash2,
+  CalendarDays
 } from 'lucide-react';
 import { supabase } from '../supabaseClient';
 import jsPDF from 'jspdf';
@@ -30,6 +32,20 @@ import { Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType } fro
 import '../winners.css';
 
 // ─── Types ───────────────────────────────────────────────────────────
+interface SessionDay {
+  id?: string;
+  session_id?: string;
+  day_number: number;
+  day_label: string;
+  day_date: string;
+  modality: 'Synchronous' | 'Asynchronous';
+  where_location: string;
+  start_time: string;
+  end_time: string;
+  time_schedule?: string;
+  duration?: string;
+}
+
 interface Session {
   id: string;
   name: string;
@@ -44,6 +60,7 @@ interface Session {
   topic_description?: string;
   investment_fee?: string;
   cpd_units?: string;
+  days?: SessionDay[];
 }
 
 interface Registration {
@@ -144,6 +161,18 @@ function Admin() {
   const [showSessionDropdown, setShowSessionDropdown] = useState(false);
   const [sessionsReady, setSessionsReady] = useState(false);
 
+  // Multi-day session state
+  const emptyDay = (dayNum: number): SessionDay => ({
+    day_number: dayNum,
+    day_label: `Day ${dayNum}`,
+    day_date: '',
+    modality: 'Synchronous',
+    where_location: 'Zoom Online Meeting',
+    start_time: '',
+    end_time: '',
+  });
+  const [newSessionDays, setNewSessionDays] = useState<SessionDay[]>([emptyDay(1), emptyDay(2)]);
+
   const tableRef = useRef<HTMLTableElement>(null);
 
   const selectedSession = sessions.find(s => s.id === selectedSessionId);
@@ -235,7 +264,28 @@ function Admin() {
         .order('created_at', { ascending: false });
 
       if (fetchError) throw fetchError;
-      const sessionList = data ?? [];
+      const sessionList: Session[] = data ?? [];
+
+      // Fetch session_days for all sessions
+      try {
+        const sessionIds = sessionList.map(s => s.id);
+        if (sessionIds.length > 0) {
+          const { data: daysData } = await supabase
+            .from('session_days')
+            .select('*')
+            .in('session_id', sessionIds)
+            .order('day_number', { ascending: true });
+
+          if (daysData) {
+            sessionList.forEach(session => {
+              session.days = daysData.filter(d => d.session_id === session.id);
+            });
+          }
+        }
+      } catch {
+        // session_days table may not exist yet — graceful fallback
+      }
+
       setSessions(sessionList);
 
       // Auto-select the first non-archived session, or the first one
@@ -280,19 +330,59 @@ function Admin() {
     return { time_schedule: schedule, duration: durationParts.join(' and ') };
   };
 
+  // Day management helpers for create modal
+  const addDay = () => {
+    setNewSessionDays(prev => [...prev, emptyDay(prev.length + 1)]);
+  };
+
+  const removeDay = (index: number) => {
+    if (newSessionDays.length <= 1) return;
+    setNewSessionDays(prev => {
+      const updated = prev.filter((_, i) => i !== index);
+      // Re-number days
+      return updated.map((d, i) => ({ ...d, day_number: i + 1, day_label: `Day ${i + 1}` }));
+    });
+  };
+
+  const updateDay = (index: number, field: keyof SessionDay, value: string) => {
+    setNewSessionDays(prev => {
+      const updated = [...prev];
+      updated[index] = { ...updated[index], [field]: value };
+      // Auto-fill where_location based on modality
+      if (field === 'modality') {
+        updated[index].where_location = value === 'Asynchronous' ? 'Online (Self-paced)' : 'Zoom Online Meeting';
+        if (value === 'Asynchronous') {
+          updated[index].start_time = '';
+          updated[index].end_time = '';
+        }
+      }
+      return updated;
+    });
+  };
+
   const handleCreateSession = async () => {
     if (!newSessionName.trim()) return;
     setSessionLoading(true);
     try {
-      const { time_schedule, duration } = calculateDurationAndSchedule(newSessionStartTime, newSessionEndTime);
+      // Compute a summary when_date from day dates
+      const dayDates = newSessionDays.filter(d => d.day_date.trim()).map(d => d.day_date.trim());
+      const summaryWhenDate = newSessionWhen.trim() || (dayDates.length > 0 ? dayDates.join(', ') : '');
+
+      // For backward compat, use first synchronous day's time for session-level fields
+      const firstSyncDay = newSessionDays.find(d => d.modality === 'Synchronous' && d.start_time && d.end_time);
+      const { time_schedule, duration } = firstSyncDay
+        ? calculateDurationAndSchedule(firstSyncDay.start_time, firstSyncDay.end_time)
+        : calculateDurationAndSchedule(newSessionStartTime, newSessionEndTime);
+
+      const firstWhere = newSessionDays.find(d => d.where_location.trim())?.where_location.trim() || newSessionWhere.trim();
 
       const { data, error: insertError } = await supabase
         .from('sessions')
         .insert([{ 
           name: newSessionName.trim(),
           what: newSessionWhat.trim(),
-          when_date: newSessionWhen.trim(),
-          where_location: newSessionWhere.trim(),
+          when_date: summaryWhenDate,
+          where_location: firstWhere,
           time_schedule,
           duration,
           topic_description: newSessionTopic.trim(),
@@ -304,7 +394,35 @@ function Admin() {
 
       if (insertError) throw insertError;
 
-      setSessions(prev => [data, ...prev]);
+      // Insert session_days
+      const daysToInsert = newSessionDays.map(day => {
+        const daySchedule = day.modality === 'Synchronous' && day.start_time && day.end_time
+          ? calculateDurationAndSchedule(day.start_time, day.end_time)
+          : { time_schedule: day.modality === 'Asynchronous' ? 'Self-paced' : '', duration: '' };
+        return {
+          session_id: data.id,
+          day_number: day.day_number,
+          day_label: day.day_label,
+          day_date: day.day_date.trim(),
+          modality: day.modality,
+          where_location: day.where_location.trim(),
+          start_time: day.start_time || null,
+          end_time: day.end_time || null,
+          time_schedule: daySchedule.time_schedule,
+          duration: daySchedule.duration,
+        };
+      });
+
+      const { error: daysError } = await supabase
+        .from('session_days')
+        .insert(daysToInsert);
+
+      if (daysError) console.error('Failed to insert session days:', daysError);
+
+      // Attach days to session data for local state
+      const sessionWithDays: Session = { ...data, days: daysToInsert as SessionDay[] };
+
+      setSessions(prev => [sessionWithDays, ...prev]);
       setSelectedSessionId(data.id);
       
       setNewSessionName('');
@@ -316,6 +434,7 @@ function Admin() {
       setNewSessionTopic('');
       setNewSessionFee('');
       setNewSessionCpdUnits('');
+      setNewSessionDays([emptyDay(1), emptyDay(2)]);
       
       setShowCreateSession(false);
       showToast(`Session "${data.name}" created! 🎉`);
@@ -1579,15 +1698,15 @@ function Admin() {
       {/* ── Create Session Modal ──────────────────────────────── */}
       {showCreateSession && (
         <div className="modal-overlay" onClick={() => setShowCreateSession(false)} style={{ overflowY: 'auto', padding: '2rem 0' }}>
-          <div className="modal-card" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '600px', width: '90%', margin: 'auto' }}>
+          <div className="modal-card" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '720px', width: '95%', margin: 'auto' }}>
             <button className="modal-close" onClick={() => setShowCreateSession(false)}><X size={20} /></button>
             <h3 className="modal-title">Create New Session</h3>
             <p className="modal-desc">Fill in the session details for the registration page.</p>
             
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', maxHeight: '60vh', overflowY: 'auto', paddingRight: '0.5rem', marginBottom: '1.5rem' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', maxHeight: '65vh', overflowY: 'auto', paddingRight: '0.5rem', marginBottom: '1.5rem' }}>
               <div className="form-group" style={{ margin: 0 }}>
                 <label className="form-label" style={{ fontSize: '0.75rem', marginBottom: '0.2rem' }}>SESSION NAME (Internal)*</label>
-                <input type="text" className="form-input" style={{ padding: '0.6rem 1rem' }} placeholder="e.g. Batch 2 - June 2026" value={newSessionName} onChange={(e) => setNewSessionName(e.target.value)} />
+                <input type="text" className="form-input" style={{ padding: '0.6rem 1rem' }} placeholder="e.g. Batch 3 - October 2026" value={newSessionName} onChange={(e) => setNewSessionName(e.target.value)} />
               </div>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1596,24 +1715,8 @@ function Admin() {
                   <input type="text" className="form-input" style={{ padding: '0.6rem 1rem' }} placeholder="e.g. Mental Wellness" value={newSessionWhat} onChange={(e) => setNewSessionWhat(e.target.value)} />
                 </div>
                 <div className="form-group" style={{ margin: 0 }}>
-                  <label className="form-label" style={{ fontSize: '0.75rem', marginBottom: '0.2rem' }}>WHEN (Date string)</label>
-                  <input type="text" className="form-input" style={{ padding: '0.6rem 1rem' }} placeholder="e.g. June 27 to 28, 2026" value={newSessionWhen} onChange={(e) => setNewSessionWhen(e.target.value)} />
-                </div>
-              </div>
-
-              <div className="form-group" style={{ margin: 0 }}>
-                <label className="form-label" style={{ fontSize: '0.75rem', marginBottom: '0.2rem' }}>WHERE</label>
-                <input type="text" className="form-input" style={{ padding: '0.6rem 1rem' }} placeholder="e.g. Zoom Online Meeting" value={newSessionWhere} onChange={(e) => setNewSessionWhere(e.target.value)} />
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="form-group" style={{ margin: 0 }}>
-                  <label className="form-label" style={{ fontSize: '0.75rem', marginBottom: '0.2rem' }}>START TIME</label>
-                  <input type="time" className="form-input" style={{ padding: '0.6rem 1rem' }} value={newSessionStartTime} onChange={(e) => setNewSessionStartTime(e.target.value)} />
-                </div>
-                <div className="form-group" style={{ margin: 0 }}>
-                  <label className="form-label" style={{ fontSize: '0.75rem', marginBottom: '0.2rem' }}>END TIME</label>
-                  <input type="time" className="form-input" style={{ padding: '0.6rem 1rem' }} value={newSessionEndTime} onChange={(e) => setNewSessionEndTime(e.target.value)} />
+                  <label className="form-label" style={{ fontSize: '0.75rem', marginBottom: '0.2rem' }}>WHEN (Summary/Override)</label>
+                  <input type="text" className="form-input" style={{ padding: '0.6rem 1rem' }} placeholder="e.g. Oct 4 to 11, 2026 (auto-filled from days)" value={newSessionWhen} onChange={(e) => setNewSessionWhen(e.target.value)} />
                 </div>
               </div>
 
@@ -1625,11 +1728,112 @@ function Admin() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="form-group" style={{ margin: 0 }}>
                   <label className="form-label" style={{ fontSize: '0.75rem', marginBottom: '0.2rem' }}>INVESTMENT FEE AMOUNT</label>
-                  <input type="number" step="0.01" className="form-input" style={{ padding: '0.6rem 1rem' }} placeholder="e.g. 300.00" value={newSessionFee} onChange={(e) => setNewSessionFee(e.target.value)} />
+                  <input type="number" step="0.01" className="form-input" style={{ padding: '0.6rem 1rem' }} placeholder="e.g. 500.00" value={newSessionFee} onChange={(e) => setNewSessionFee(e.target.value)} />
                 </div>
                 <div className="form-group" style={{ margin: 0 }}>
                   <label className="form-label" style={{ fontSize: '0.75rem', marginBottom: '0.2rem' }}>CPD UNITS</label>
-                  <input type="number" className="form-input" style={{ padding: '0.6rem 1rem' }} placeholder="e.g. 4" value={newSessionCpdUnits} onChange={(e) => setNewSessionCpdUnits(e.target.value)} />
+                  <input type="number" className="form-input" style={{ padding: '0.6rem 1rem' }} placeholder="e.g. 6" value={newSessionCpdUnits} onChange={(e) => setNewSessionCpdUnits(e.target.value)} />
+                </div>
+              </div>
+
+              {/* ── Day Schedule Section ─────────────────────────── */}
+              <div style={{ borderTop: '1px solid var(--brand-border, #e2e8f0)', paddingTop: '1rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <CalendarDays size={18} style={{ color: 'var(--brand-orange)' }} />
+                    <span style={{ fontSize: '0.85rem', fontWeight: '700', color: 'var(--brand-black, #0f172a)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Schedule per Day</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={addDay}
+                    style={{
+                      display: 'inline-flex', alignItems: 'center', gap: '4px',
+                      padding: '0.35rem 0.75rem', borderRadius: '6px', border: '1px solid var(--brand-orange)',
+                      background: 'rgba(255, 94, 0, 0.05)', color: 'var(--brand-orange)',
+                      fontSize: '0.8rem', fontWeight: '600', cursor: 'pointer', transition: 'all 0.2s'
+                    }}
+                  >
+                    <Plus size={14} /> Add Day
+                  </button>
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                  {newSessionDays.map((day, idx) => (
+                    <div key={idx} className="session-day-row" style={{
+                      background: '#f8fafc', border: '1px solid var(--brand-border, #e2e8f0)',
+                      borderRadius: '10px', padding: '0.875rem', position: 'relative',
+                      borderLeft: day.modality === 'Asynchronous' ? '3px solid #8b5cf6' : '3px solid var(--brand-orange)'
+                    }}>
+                      {/* Day header */}
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.6rem' }}>
+                        <span style={{ fontSize: '0.8rem', fontWeight: '700', color: 'var(--brand-black, #0f172a)' }}>{day.day_label}</span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                          {/* Modality selector */}
+                          <select
+                            value={day.modality}
+                            onChange={(e) => updateDay(idx, 'modality', e.target.value)}
+                            style={{
+                              padding: '0.3rem 0.6rem', borderRadius: '6px', fontSize: '0.75rem', fontWeight: '600',
+                              border: '1px solid var(--brand-border, #e2e8f0)', cursor: 'pointer',
+                              background: day.modality === 'Asynchronous' ? 'rgba(139, 92, 246, 0.1)' : 'rgba(255, 94, 0, 0.1)',
+                              color: day.modality === 'Asynchronous' ? '#7c3aed' : 'var(--brand-orange)',
+                            }}
+                          >
+                            <option value="Synchronous">Synchronous</option>
+                            <option value="Asynchronous">Asynchronous</option>
+                          </select>
+                          {newSessionDays.length > 1 && (
+                            <button
+                              type="button"
+                              onClick={() => removeDay(idx)}
+                              style={{
+                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                width: '28px', height: '28px', borderRadius: '6px', border: 'none',
+                                background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', cursor: 'pointer',
+                                transition: 'all 0.2s'
+                              }}
+                              title="Remove day"
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Day fields */}
+                      <div style={{ display: 'grid', gridTemplateColumns: day.modality === 'Synchronous' ? '1fr 1fr' : '1fr', gap: '0.5rem' }}>
+                        <div className="form-group" style={{ margin: 0 }}>
+                          <label className="form-label" style={{ fontSize: '0.65rem', marginBottom: '0.15rem', textTransform: 'uppercase', letterSpacing: '0.3px' }}>DATE</label>
+                          <input type="text" className="form-input" style={{ padding: '0.45rem 0.7rem', fontSize: '0.85rem' }} placeholder="e.g. October 4, 2026 (Saturday)" value={day.day_date} onChange={(e) => updateDay(idx, 'day_date', e.target.value)} />
+                        </div>
+                        <div className="form-group" style={{ margin: 0 }}>
+                          <label className="form-label" style={{ fontSize: '0.65rem', marginBottom: '0.15rem', textTransform: 'uppercase', letterSpacing: '0.3px' }}>WHERE</label>
+                          <input type="text" className="form-input" style={{ padding: '0.45rem 0.7rem', fontSize: '0.85rem' }} placeholder={day.modality === 'Asynchronous' ? 'Online (Self-paced)' : 'Zoom Online Meeting'} value={day.where_location} onChange={(e) => updateDay(idx, 'where_location', e.target.value)} />
+                        </div>
+                      </div>
+
+                      {/* Time fields — only for Synchronous */}
+                      {day.modality === 'Synchronous' && (
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem', marginTop: '0.5rem' }}>
+                          <div className="form-group" style={{ margin: 0 }}>
+                            <label className="form-label" style={{ fontSize: '0.65rem', marginBottom: '0.15rem', textTransform: 'uppercase', letterSpacing: '0.3px' }}>START TIME</label>
+                            <input type="time" className="form-input" style={{ padding: '0.45rem 0.7rem', fontSize: '0.85rem' }} value={day.start_time} onChange={(e) => updateDay(idx, 'start_time', e.target.value)} />
+                          </div>
+                          <div className="form-group" style={{ margin: 0 }}>
+                            <label className="form-label" style={{ fontSize: '0.65rem', marginBottom: '0.15rem', textTransform: 'uppercase', letterSpacing: '0.3px' }}>END TIME</label>
+                            <input type="time" className="form-input" style={{ padding: '0.45rem 0.7rem', fontSize: '0.85rem' }} value={day.end_time} onChange={(e) => updateDay(idx, 'end_time', e.target.value)} />
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Async info hint */}
+                      {day.modality === 'Asynchronous' && (
+                        <p style={{ fontSize: '0.7rem', color: '#7c3aed', margin: '0.4rem 0 0', fontStyle: 'italic' }}>
+                          ⓘ Asynchronous — participants complete at their own pace, no scheduled time.
+                        </p>
+                      )}
+                    </div>
+                  ))}
                 </div>
               </div>
             </div>
