@@ -731,7 +731,7 @@ function PaidRegistration() {
                         <div className="grid grid-cols-1 sm:grid-cols-[100px_1fr] gap-2.5">
                           <strong style={{ color: 'var(--brand-black)' }}>WHERE:</strong> <span>{activeSession?.where_location || 'Zoom Online Meeting'}</span>
                           <strong style={{ color: 'var(--brand-black)' }}>TIME:</strong> <span>{activeSession?.time_schedule || '7:00 PM to 10:00 PM'}</span>
-                          <strong style={{ color: 'var(--brand-black)' }}>DURATION:</strong> <span>{activeSession?.duration || '3 Hours'}</span>
+                          <strong style={{ color: 'var(--brand-black)' }}>DURATION:</strong> <span>{activeSession?.duration || '6 Hours'}</span>
                         </div>
                       </div>
                     )}
@@ -744,10 +744,10 @@ function PaidRegistration() {
                     <div style={{ background: 'rgba(255, 94, 0, 0.05)', border: '1px solid rgba(255, 94, 0, 0.2)', padding: '20px', borderRadius: '12px' }}>
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
                         <span style={{ fontSize: '1.1rem', color: 'var(--brand-black)', fontWeight: 'bold' }}>Investment Fee</span>
-                        <span style={{ color: 'var(--brand-orange)', fontSize: '1.4rem', fontWeight: 'bold' }}>Php {activeSession?.investment_fee || '300.00'}</span>
+                        <span style={{ color: 'var(--brand-orange)', fontSize: '1.4rem', fontWeight: 'bold' }}>Php {activeSession?.investment_fee || '500.00'}</span>
                       </div>
                       <div style={{ height: '1px', background: 'rgba(255, 94, 0, 0.2)', margin: '10px 0' }} />
-                      <p style={{ fontSize: '0.95rem' }}><strong style={{ color: 'var(--brand-black)' }}>Inclusions:</strong> Online Learning Materials and E-Certificate with {activeSession?.cpd_units || '4'} CPD Units</p>
+                      <p style={{ fontSize: '0.95rem' }}><strong style={{ color: 'var(--brand-black)' }}>Inclusions:</strong> Online Learning Materials and E-Certificate with {activeSession?.cpd_units || '2'} CPD Units</p>
                     </div>
                   </div>
                 )}
