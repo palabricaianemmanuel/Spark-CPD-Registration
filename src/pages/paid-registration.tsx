@@ -898,7 +898,7 @@ function PaidRegistration() {
                         <div style={{ background: 'rgba(255, 94, 0, 0.05)', border: '1px solid rgba(255, 94, 0, 0.2)', padding: '15px', borderRadius: '12px', marginBottom: '1.5rem' }}>
                           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                             <span style={{ color: 'var(--brand-black)', fontWeight: '500' }}>Total Due</span>
-                            <span style={{ color: 'var(--brand-orange)', fontWeight: 'bold', fontSize: '1.2rem' }}>Php 500.00</span>
+                            <span style={{ color: 'var(--brand-orange)', fontWeight: 'bold', fontSize: '1.2rem' }}>Php 1000.00</span>
                           </div>
                         </div>
 
