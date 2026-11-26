@@ -126,6 +126,9 @@ const CustomSelect: React.FC<CustomSelectProps> = ({ options, value, onChange, p
   );
 };
 
+// Temporary toggle: Set to true to pause accepting registrations (disables Continue button), false to re-enable
+const IS_CONTINUE_DISABLED = true;
+
 function PaidRegistration() {
   const [currentStep, setCurrentStep] = useState(1);
   const [consent, setConsent] = useState<'agree' | 'disagree' | null>(null);
@@ -327,6 +330,7 @@ function PaidRegistration() {
   };
 
   const nextStep = async () => {
+    if (IS_CONTINUE_DISABLED) return;
     setError(null);
     if (currentStep === 2 && consent !== 'agree') {
       setError('You must agree to the data privacy consent to proceed.');
@@ -965,7 +969,8 @@ function PaidRegistration() {
                     onClick={nextStep}
                     className="submit-btn"
                     style={{ flex: 2 }}
-                    disabled={loading}
+                    disabled={loading || IS_CONTINUE_DISABLED}
+                    title={IS_CONTINUE_DISABLED ? 'Registration is temporarily paused' : undefined}
                   >
                     {loading && currentStep === 3 ? (
                       <>
